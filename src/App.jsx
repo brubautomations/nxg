@@ -209,6 +209,82 @@ function AlbumView({ album, tracks, onClose }) {
   );
 }
 
+function MediaLightbox({ items, index, onClose, onNav }) {
+  const it = items[index];
+  useEffect(() => {
+    const h = (e) => {
+      if (e.key === 'Escape') onClose();
+      else if (e.key === 'ArrowLeft' && items.length > 1) onNav((index - 1 + items.length) % items.length);
+      else if (e.key === 'ArrowRight' && items.length > 1) onNav((index + 1) % items.length);
+    };
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [index, items.length]);
+  if (!it) return null;
+  const prev = (e) => { e.stopPropagation(); onNav((index - 1 + items.length) % items.length); };
+  const next = (e) => { e.stopPropagation(); onNav((index + 1) % items.length); };
+  return (
+    <div className="media-lb" onClick={onClose}>
+      <button className="lb-close" onClick={onClose} aria-label="Close">✕</button>
+      {items.length > 1 && <button className="lb-nav lb-prev" onClick={prev} aria-label="Previous">‹</button>}
+      <div className="lb-content" onClick={(e) => e.stopPropagation()}>
+        {it.type === 'image'
+          ? <img src={it.url} alt={it.title} />
+          : <video src={it.url} controls autoPlay playsInline />}
+        {it.title && <div className="lb-title">{it.title}</div>}
+      </div>
+      {items.length > 1 && <button className="lb-nav lb-next" onClick={next} aria-label="Next">›</button>}
+    </div>
+  );
+}
+
+function MediaSection({ media }) {
+  const items = React.useMemo(() => (media || [])
+    .filter((m) => !m.vault_only)
+    .map((m) => {
+      const f = attRaw(m.file)[0];
+      const name = f ? (f.filename || f.url || '') : '';
+      const isVid = f && ((f.type || '').startsWith('video') || /\.(mp4|mov|webm|m4v)(\?|$)/i.test(name));
+      return { id: m.id, type: isVid ? 'video' : 'image', url: f ? f.url : '', thumb: att(m.thumb), title: m.title || '', category: m.category || '' };
+    })
+    .filter((it) => it.url), [media]);
+  const [tab, setTab] = useState('image');
+  const [cat, setCat] = useState('All');
+  const [lb, setLb] = useState(null);
+  const tabItems = items.filter((it) => it.type === tab);
+  const cats = ['All', ...Array.from(new Set(tabItems.map((it) => it.category).filter(Boolean)))];
+  const shown = cat === 'All' ? tabItems : tabItems.filter((it) => it.category === cat);
+  const switchTab = (t) => { setTab(t); setCat('All'); setLb(null); };
+  return (
+    <section className="sec mediasec" id="media">
+      <span className="eyebrow">03 — THE FEED</span>
+      <h2>MEDIA</h2>
+      <div className="media-tabs">
+        <button className={tab === 'image' ? 'on' : ''} onClick={() => switchTab('image')}>PHOTOS</button>
+        <button className={tab === 'video' ? 'on' : ''} onClick={() => switchTab('video')}>VIDEOS</button>
+      </div>
+      {cats.length > 1 && (
+        <div className="media-chips">
+          {cats.map((c) => <button key={c} className={'chip' + (c === cat ? ' on' : '')} onClick={() => setCat(c)}>{c}</button>)}
+        </div>
+      )}
+      {shown.length ? (
+        <div className="media-grid">
+          {shown.map((it, i) => (
+            <div className="media-cell" key={it.id} onClick={() => setLb(i)}>
+              {it.type === 'image' || it.thumb
+                ? <div className="media-thumb" style={{ backgroundImage: `url(${it.type === 'image' ? it.url : it.thumb})` }} />
+                : <video className="media-thumb vidthumb" src={it.url + '#t=0.1'} muted preload="metadata" playsInline />}
+              {it.type === 'video' && <span className="media-play">▶</span>}
+            </div>
+          ))}
+        </div>
+      ) : <p className="media-empty">Nothing here yet — upload to the MEDIA table.</p>}
+      {lb !== null && <MediaLightbox items={shown} index={lb} onClose={() => setLb(null)} onNav={setLb} />}
+    </section>
+  );
+}
+
 export default function App() {
   const data = useData();
   const [phase, setPhase] = useState('boot');     // boot | gate | site
@@ -356,23 +432,7 @@ export default function App() {
 
           <Discography albums={albums} tracks={tracks} onOpen={setOpenAlbum} />
 
-          <section className="sec" id="media">
-            <span className="eyebrow">03 — THE FEED</span>
-            <h2>MEDIA</h2>
-            <p>clips · canvases · stills · the unreleased</p>
-            {media.length > 0 && (
-              <div className="med-grid">
-                {media.map((m, i) => (
-                  <div className="med" key={i}>
-                    {m.type === 'video'
-                      ? <video src={att(m.file)} poster={att(m.thumb)} muted loop playsInline />
-                      : <img src={att(m.file)} alt={m.title} />}
-                    {m.vault_only && <span className="lockbadge">⬡</span>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+          <MediaSection media={media} />
 
           <section className="sec" id="merch">
             <span className="eyebrow b">04 — SHOP</span>
