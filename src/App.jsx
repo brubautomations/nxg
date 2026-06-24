@@ -151,6 +151,8 @@ function TrackRow({ t, n, open, onToggle }) {
   const embed = spotifyEmbed(t.spotify_url);
   const canvas = attRaw(t.canvas)[0];
   const isVideo = canvas && (canvas.type || '').startsWith('video');
+  const videoRef = useRef(null);
+  const toggleVideo = () => { const v = videoRef.current; if (!v) return; if (v.paused) v.play(); else v.pause(); };
   return (
     <div className={'trk' + (open ? ' open' : '')}>
       <button className="trk-head" onClick={onToggle}>
@@ -162,7 +164,7 @@ function TrackRow({ t, n, open, onToggle }) {
       {open && (
         <div className="trk-body">
           {canvas && (isVideo
-            ? <video className="trk-canvas" src={canvas.url} controls loop muted playsInline />
+            ? <video ref={videoRef} className="trk-canvas trk-vid" src={canvas.url} autoPlay loop muted playsInline onClick={toggleVideo} title="Click to pause / play" />
             : <img className="trk-canvas" src={canvas.url} alt={t.title} />)}
           {embed && (
             <iframe className="trk-spotify" title={t.title} src={embed} width="100%" height="80" frameBorder="0"
