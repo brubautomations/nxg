@@ -70,6 +70,42 @@ function MemberBio({ m, onClose }) {
   );
 }
 
+// Paste an NXG Spotify track/album/artist/playlist link here as the default
+// (used only until the TRACKS table has rows with spotify_url).
+const FALLBACK_SPOTIFY = '';
+
+function spotifyEmbed(url) {
+  if (!url) return '';
+  let m = url.match(/spotify\.com\/(track|album|artist|playlist)\/([A-Za-z0-9]+)/);
+  if (!m) m = url.match(/spotify:(track|album|artist|playlist):([A-Za-z0-9]+)/);
+  if (!m) return '';
+  return `https://open.spotify.com/embed/${m[1]}/${m[2]}?theme=0`;
+}
+
+function SpotifyPlayer({ tracks, show, logo }) {
+  const pool = React.useMemo(() => {
+    const urls = (tracks || []).map((t) => t.spotify_url).filter(Boolean);
+    return urls.length ? urls : (FALLBACK_SPOTIFY ? [FALLBACK_SPOTIFY] : []);
+  }, [tracks]);
+  const [i, setI] = useState(0);
+  useEffect(() => { if (pool.length) setI(Math.floor(Math.random() * pool.length)); }, [pool.length]);
+  const src = spotifyEmbed(pool[i]);
+  const shuffle = () => { if (pool.length > 1) { let n; do { n = Math.floor(Math.random() * pool.length); } while (n === i); setI(n); } };
+  if (!src) return null;
+  return (
+    <div className={'splayer' + (show ? ' show' : '')}>
+      <div className="sp-top">
+        <img className="sp-logo" src={logo} alt="NXG" />
+        <span className="sp-now">NOW PLAYING</span>
+        {pool.length > 1 && <button className="sp-next" onClick={shuffle} aria-label="Shuffle">⤿</button>}
+      </div>
+      <iframe title="NXG player" src={src} width="100%" height="80" frameBorder="0"
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"
+        style={{ borderRadius: '10px', display: 'block' }} />
+    </div>
+  );
+}
+
 export default function App() {
   const data = useData();
   const [phase, setPhase] = useState('boot');     // boot | gate | site
@@ -180,7 +216,7 @@ export default function App() {
   useEffect(() => { const id = setInterval(() => { if (audio.current.ctx && audio.current.ctx.state === 'running') setProg((p) => (p + 0.4) % 100); }, 240); return () => clearInterval(id); }, []);
 
   /* ---- enter ---- */
-  function enter() { startAudio(); setPhase('site'); }
+  function enter() { setPhase('site'); }
   function scrollTo(id) { setMenuOpen(false); const el = document.getElementById(id); if (el) setTimeout(() => el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' }), 200); }
   function pickLang(code) { setActiveLang(code); if (code !== 'EN') { setLangNote(true); clearTimeout(window._lt); window._lt = setTimeout(() => setLangNote(false), 1800); } }
 
@@ -339,13 +375,8 @@ export default function App() {
         </section>
       )}
 
-      {/* ===== PLAYER ===== */}
-      <div className={'player' + (entered ? ' show' : '')}>
-        <div className="pl-art" />
-        <div className="pl-mid"><div className="pl-track">{copyVal(copy, 'now_playing', 'GRAVITY — NXG')}</div><div className="pl-prog"><span style={{ width: prog + '%' }} /></div></div>
-        <button className="pl-btn" aria-label="Play / pause" onClick={togglePlay}>{playing ? '❚❚' : '▶'}</button>
-        <button className="pl-mute" aria-label="Mute" onClick={toggleMute}>{muted ? '✕' : '♪'}</button>
-      </div>
+      {/* ===== PLAYER (real Spotify, plays count) ===== */}
+      <SpotifyPlayer tracks={pub(data && data.tracks)} show={entered} logo={logo} />
       <MemberBio m={bioMember} onClose={() => setBioMember(null)} />
     </>
   );

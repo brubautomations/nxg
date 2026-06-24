@@ -175,6 +175,20 @@ button{font-family:inherit;}
 .replay{font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--dim); background:none; border:none; cursor:pointer; transition:.2s;}
 .replay:hover{color:var(--pink);}
 
+/* ===== Spotify-backed player (NXG chrome) ===== */
+.splayer{position:fixed; right:18px; bottom:18px; z-index:45; display:none; flex-direction:column; gap:8px;
+  width:min(92vw,360px); padding:10px; border-radius:16px; border:1.5px solid transparent;
+  background:linear-gradient(#0c0e14,#0c0e14) padding-box, linear-gradient(135deg,var(--pink),var(--violet),var(--blue)) border-box;
+  box-shadow:0 14px 34px rgba(20,10,40,.3), 0 0 20px rgba(255,45,139,.18);}
+.splayer.show{display:flex;}
+.sp-top{display:flex; align-items:center; gap:10px;}
+.sp-logo{height:20px; width:auto; display:block;}
+.sp-now{flex:1; font-size:9px; letter-spacing:.3em; color:#8a8d99; text-transform:uppercase;}
+.sp-next{width:26px; height:26px; border-radius:50%; cursor:pointer; border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.06); color:#fff; font-size:13px; transition:.2s;}
+.sp-next:hover{border-color:var(--pink); color:var(--pink);}
+.sp-next:focus-visible{outline:2px solid var(--blue); outline-offset:2px;}
+
 /* ===== player ===== */
 .player{position:fixed; right:18px; bottom:18px; z-index:45; display:none; align-items:center; gap:10px;
   width:min(86vw,290px); padding:9px 11px; border-radius:13px; border:1.5px solid transparent;
