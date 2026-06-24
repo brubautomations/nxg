@@ -31,3 +31,7 @@ export const att = (field, fallback = '') =>
 // all attachment URLs
 export const atts = (field) =>
   Array.isArray(field) ? field.map((f) => f.url).filter(Boolean) : [];
+
+// raw attachment objects ({ url, type, filename }) — needed to tell image vs video
+export const attRaw = (field) =>
+  Array.isArray(field) ? field.filter((f) => f && f.url) : [];

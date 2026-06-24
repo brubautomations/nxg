@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useData, pub, copyVal, att, atts } from './lib/data.js';
+import { useData, pub, copyVal, att, atts, attRaw } from './lib/data.js';
 
 /* ---- bundled fallback assets (used until Airtable is populated) ---- */
 const LOGO_FALLBACK = '/assets/logo.png';
@@ -88,9 +88,17 @@ function SpotifyPlayer({ tracks, show, logo }) {
     return urls.length ? urls : (FALLBACK_SPOTIFY ? [FALLBACK_SPOTIFY] : []);
   }, [tracks]);
   const [i, setI] = useState(0);
-  useEffect(() => { if (pool.length) setI(Math.floor(Math.random() * pool.length)); }, [pool.length]);
+  useEffect(() => {
+    if (!pool.length) return;
+    const last = sessionStorage.getItem('nxg_last');
+    let n = Math.floor(Math.random() * pool.length), guard = 0;
+    while (pool.length > 1 && pool[n] === last && guard < 12) { n = Math.floor(Math.random() * pool.length); guard++; }
+    setI(n); sessionStorage.setItem('nxg_last', pool[n]);
+  }, [pool.length]);
   const src = spotifyEmbed(pool[i]);
-  const shuffle = () => { if (pool.length > 1) { let n; do { n = Math.floor(Math.random() * pool.length); } while (n === i); setI(n); } };
+  const shuffle = () => {
+    if (pool.length > 1) { let n; do { n = Math.floor(Math.random() * pool.length); } while (n === i); setI(n); sessionStorage.setItem('nxg_last', pool[n]); }
+  };
   if (!src) return null;
   return (
     <div className={'splayer' + (show ? ' show' : '')}>
@@ -106,6 +114,99 @@ function SpotifyPlayer({ tracks, show, logo }) {
   );
 }
 
+function Discography({ albums, tracks, onOpen }) {
+  const [idx, setIdx] = useState(0);
+  if (!albums.length) {
+    return (<section className="sec discsec" id="discography"><span className="eyebrow b">02 — RELEASES</span><h2>DISCOGRAPHY</h2></section>);
+  }
+  const a = albums[Math.min(idx, albums.length - 1)];
+  const prev = () => setIdx((i) => (i - 1 + albums.length) % albums.length);
+  const next = () => setIdx((i) => (i + 1) % albums.length);
+  return (
+    <section className="sec discsec" id="discography">
+      <span className="eyebrow b">02 — RELEASES</span>
+      <h2>DISCOGRAPHY</h2>
+      <div className="disc-stage">
+        {albums.length > 1 && <button className="disc-arrow" onClick={prev} aria-label="Previous album">‹</button>}
+        <div className="disc-feat" onClick={() => onOpen(a)}>
+          <img className="disc-cover" src={att(a.cover)} alt={a.title} />
+          <div className="disc-title">{a.title}</div>
+          {a.release_date && <div className="disc-date">{a.release_date}</div>}
+          <span className="disc-view">VIEW ALBUM →</span>
+        </div>
+        {albums.length > 1 && <button className="disc-arrow" onClick={next} aria-label="Next album">›</button>}
+      </div>
+      {albums.length > 1 && (
+        <div className="disc-strip">
+          {albums.map((al, i) => (
+            <img key={i} className={'disc-thumb' + (i === idx ? ' on' : '')} src={att(al.cover)} alt={al.title} onClick={() => setIdx(i)} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function TrackRow({ t, n, open, onToggle }) {
+  const embed = spotifyEmbed(t.spotify_url);
+  const canvas = attRaw(t.canvas)[0];
+  const isVideo = canvas && (canvas.type || '').startsWith('video');
+  return (
+    <div className={'trk' + (open ? ' open' : '')}>
+      <button className="trk-head" onClick={onToggle}>
+        <span className="trk-n">{String(n).padStart(2, '0')}</span>
+        <span className="trk-title">{t.title}</span>
+        {t.lyricist && <span className="trk-by">{t.lyricist}</span>}
+        <span className="trk-caret">{open ? '−' : '+'}</span>
+      </button>
+      {open && (
+        <div className="trk-body">
+          {canvas && (isVideo
+            ? <video className="trk-canvas" src={canvas.url} controls loop muted playsInline />
+            : <img className="trk-canvas" src={canvas.url} alt={t.title} />)}
+          {embed && (
+            <iframe className="trk-spotify" title={t.title} src={embed} width="100%" height="80" frameBorder="0"
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" />
+          )}
+          {t.story && (<><h4>STORY</h4><p className="trk-story">{t.story}</p></>)}
+          {t.lyrics && (<><h4>LYRICS{t.lyricist ? ` — ${t.lyricist}` : ''}</h4><pre className="trk-lyrics">{t.lyrics}</pre></>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AlbumView({ album, tracks, onClose }) {
+  const [openTrack, setOpenTrack] = useState(null);
+  if (!album) return null;
+  const list = (tracks || [])
+    .filter((t) => Array.isArray(t.album) && t.album.includes(album.id))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+  return (
+    <div className="bio-ov" onClick={onClose}>
+      <div className="album-panel" onClick={(e) => e.stopPropagation()}>
+        <button className="bio-close" onClick={onClose} aria-label="Close">✕</button>
+        <div className="album-head">
+          <img className="album-cover" src={att(album.cover)} alt={album.title} />
+          <div className="album-info">
+            <span className="bio-eyebrow" style={{ color: 'var(--blue)' }}>NXG // RELEASE</span>
+            <h2>{album.title}</h2>
+            {album.release_date && <div className="album-date">{album.release_date}</div>}
+            {album.blurb && <p className="album-blurb">{album.blurb}</p>}
+          </div>
+        </div>
+        <div className="tracklist">
+          {list.length
+            ? list.map((t, i) => (
+              <TrackRow key={t.id} t={t} n={i + 1} open={openTrack === t.id} onToggle={() => setOpenTrack(openTrack === t.id ? null : t.id)} />
+            ))
+            : <div className="track-empty">No tracks linked to this album yet — add them in the TRACKS table and link the album.</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const data = useData();
   const [phase, setPhase] = useState('boot');     // boot | gate | site
@@ -114,6 +215,7 @@ export default function App() {
   const [langNote, setLangNote] = useState(false);
   const [activeLang, setActiveLang] = useState('EN');
   const [bioMember, setBioMember] = useState(null);
+  const [openAlbum, setOpenAlbum] = useState(null);
 
   const lastRef = useRef(null);
   const chibiRef = useRef(null), innerRef = useRef(null), pctRef = useRef(null),
@@ -130,6 +232,7 @@ export default function App() {
   let members = pub(data && data.members);
   if (!members.length) members = Object.values(MEMBER_FALLBACK);
   const albums = pub(data && data.albums);
+  const tracks = pub(data && data.tracks);
   const media = pub(data && data.media);
   const partners = pub(data && data.partners);
   let socials = pub(data && data.socials);
@@ -249,22 +352,7 @@ export default function App() {
             </div>
           </section>
 
-          <section className="sec" id="discography">
-            <span className="eyebrow b">02 — RELEASES</span>
-            <h2>DISCOGRAPHY</h2>
-            <p>Gravity · The Popification of the Robots</p>
-            {albums.length > 0 && (
-              <div className="alb-grid">
-                {albums.map((a, i) => (
-                  <div className="alb" key={i}>
-                    <img className="cover" src={att(a.cover)} alt={a.title} />
-                    <div className="alb-t">{a.title}</div>
-                    {a.release_date && <div className="alb-d">{a.release_date}</div>}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+          <Discography albums={albums} tracks={tracks} onOpen={setOpenAlbum} />
 
           <section className="sec" id="media">
             <span className="eyebrow">03 — THE FEED</span>
@@ -378,6 +466,7 @@ export default function App() {
       {/* ===== PLAYER (real Spotify, plays count) ===== */}
       <SpotifyPlayer tracks={pub(data && data.tracks)} show={entered} logo={logo} />
       <MemberBio m={bioMember} onClose={() => setBioMember(null)} />
+      <AlbumView album={openAlbum} tracks={tracks} onClose={() => setOpenAlbum(null)} />
     </>
   );
 }
