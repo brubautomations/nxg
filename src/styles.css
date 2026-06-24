@@ -133,7 +133,7 @@ button{font-family:inherit;}
 .album-info{flex:1; min-width:200px; display:flex; flex-direction:column; gap:8px;}
 .album-info h2{font-size:clamp(1.8rem,5vw,3rem); font-weight:800; line-height:.98; color:var(--ink);}
 .album-date{font-size:11px; letter-spacing:.16em; color:var(--dim);}
-.album-blurb{font-size:14px; line-height:1.7; color:var(--ink); text-transform:none;}
+.album-blurb{font-size:14px; line-height:1.7; color:var(--ink); text-transform:none; white-space:pre-wrap;}
 .tracklist{margin-top:26px; display:flex; flex-direction:column; gap:8px;}
 .track-empty{color:var(--dim); font-size:13px;}
 .trk{border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#fff;}
@@ -145,7 +145,7 @@ button{font-family:inherit;}
 .trk-caret{font-size:18px; color:var(--dim); width:16px; text-align:center;}
 .trk-body{padding:4px 16px 18px; display:flex; flex-direction:column; gap:10px;}
 .trk-body h4{font-size:11px; letter-spacing:.24em; color:var(--pink); margin:8px 0 0;}
-.trk-story{font-size:13.5px; line-height:1.7; color:var(--ink); text-transform:none;}
+.trk-story{font-size:13.5px; line-height:1.7; color:var(--ink); text-transform:none; white-space:pre-wrap;}
 .trk-lyrics{font-family:var(--mono); font-size:13px; line-height:1.7; color:var(--ink); white-space:pre-wrap; margin:0;}
 .trk-canvas{width:100%; max-width:320px; border-radius:12px; border:1px solid var(--line); display:block;}
 .trk-spotify{border-radius:10px; display:block; border:0;}

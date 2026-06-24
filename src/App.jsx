@@ -396,7 +396,7 @@ export default function App() {
           <section className="sec" id="about">
             <span className="eyebrow b">06 — THE CONCEPT</span>
             <h2>ABOUT</h2>
-            {copyVal(copy, 'about_body') && <p style={{ maxWidth: 620, textTransform: 'none', lineHeight: 1.7, color: 'var(--ink)' }}>{copyVal(copy, 'about_body')}</p>}
+            {copyVal(copy, 'about_body') && <p style={{ maxWidth: 620, textTransform: 'none', lineHeight: 1.7, color: 'var(--ink)', whiteSpace: 'pre-wrap' }}>{copyVal(copy, 'about_body')}</p>}
           </section>
 
           <section className="sec vault" id="private">
