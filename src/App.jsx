@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useData, pub, copyVal, att } from './lib/data.js';
+import { useData, pub, copyVal, att, atts } from './lib/data.js';
 
 /* ---- bundled fallback assets (used until Airtable is populated) ---- */
 const LOGO_FALLBACK = '/assets/logo.png';
@@ -22,6 +22,54 @@ const LANGS = [['EN', 'EN'], ['KO', '한국어'], ['JA', '日本語'], ['ZH', '�
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 
+// hover slideshow uses every image attached in the member's `photo` cell (multi-attachment)
+function memberImages(m) {
+  const arr = atts(m.photo);
+  if (!arr.length) arr.push((MEMBER_FALLBACK[m.name] && MEMBER_FALLBACK[m.name].photo) || HERO_FALLBACK);
+  return arr;
+}
+
+function MemberCard({ m, onOpen }) {
+  const imgs = React.useMemo(() => memberImages(m), [m]);
+  const [idx, setIdx] = useState(0);
+  const timer = useRef(null);
+  const enter = () => { if (imgs.length > 1 && !reduce) { clearInterval(timer.current); timer.current = setInterval(() => setIdx((i) => (i + 1) % imgs.length), 750); } };
+  const leave = () => { clearInterval(timer.current); setIdx(0); };
+  useEffect(() => () => clearInterval(timer.current), []);
+  return (
+    <div className="mcard" onMouseEnter={enter} onMouseLeave={leave} onClick={() => onOpen(m)}>
+      <span className="mcard-bar" style={{ background: m.color || '#ff2d8b' }} />
+      {imgs.map((src, i) => (
+        <img key={i} className={'mcard-img' + (i === idx ? ' on' : '')} src={src} alt={m.name} draggable="false" />
+      ))}
+      <div className="mcard-foot">
+        <span className="mcard-name">{m.name}</span>
+        <span className="mcard-cta">VIEW BIO →</span>
+      </div>
+    </div>
+  );
+}
+
+function MemberBio({ m, onClose }) {
+  if (!m) return null;
+  const img = memberImages(m)[0];
+  return (
+    <div className="bio-ov" onClick={onClose}>
+      <div className="bio-panel" onClick={(e) => e.stopPropagation()}>
+        <button className="bio-close" onClick={onClose} aria-label="Close">✕</button>
+        <div className="bio-img" style={{ backgroundImage: `url(${img})` }} />
+        <div className="bio-txt">
+          <span className="bio-eyebrow" style={{ color: m.color || '#ff2d8b' }}>NXG // MEMBER</span>
+          <h2>{m.name}</h2>
+          {m.tagline && <p className="bio-tag">“{m.tagline}”</p>}
+          <h3>BACKGROUND</h3>
+          <p className="bio-body">{m.bio || 'Bio coming soon — add it in the MEMBERS table.'}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const data = useData();
   const [phase, setPhase] = useState('boot');     // boot | gate | site
@@ -29,6 +77,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [langNote, setLangNote] = useState(false);
   const [activeLang, setActiveLang] = useState('EN');
+  const [bioMember, setBioMember] = useState(null);
 
   const lastRef = useRef(null);
   const chibiRef = useRef(null), innerRef = useRef(null), pctRef = useRef(null),
@@ -156,18 +205,11 @@ export default function App() {
             <div className="scrollhint">SCROLL <span>↓</span></div>
           </section>
 
-          <section className="sec" id="members">
+          <section className="sec memsec" id="members">
             <span className="eyebrow">01 — THE GROUP</span>
             <h2>MEMBERS</h2>
-            <p>CHENXI · YOORA · HARUKA · SARAYA</p>
-            <div className="mem-grid">
-              {members.map((m, i) => (
-                <div className="mem-card" key={i}>
-                  <span className="mem-bar" style={{ background: m.color || '#ff2d8b' }} />
-                  <img src={att(m.photo, MEMBER_FALLBACK[m.name] ? MEMBER_FALLBACK[m.name].photo : HERO_FALLBACK)} alt={m.name} />
-                  <div className="mem-name">{m.name}</div>
-                </div>
-              ))}
+            <div className="mgrid">
+              {members.map((m, i) => <MemberCard key={i} m={m} onOpen={setBioMember} />)}
             </div>
           </section>
 
@@ -304,6 +346,7 @@ export default function App() {
         <button className="pl-btn" aria-label="Play / pause" onClick={togglePlay}>{playing ? '❚❚' : '▶'}</button>
         <button className="pl-mute" aria-label="Mute" onClick={toggleMute}>{muted ? '✕' : '♪'}</button>
       </div>
+      <MemberBio m={bioMember} onClose={() => setBioMember(null)} />
     </>
   );
 }
