@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useData, pub, copyVal, att, atts, attRaw } from './lib/data.js';
 
 /* ---- bundled fallback assets (used until Airtable is populated) ---- */
@@ -209,52 +210,61 @@ function AlbumView({ album, tracks, onClose }) {
   );
 }
 
-function MediaLightbox({ items, index, onClose, onNav }) {
-  const it = items[index];
+function MediaLightbox({ photos, index, title, onClose, onNav }) {
+  const it = photos[index];
   useEffect(() => {
     const h = (e) => {
       if (e.key === 'Escape') onClose();
-      else if (e.key === 'ArrowLeft' && items.length > 1) onNav((index - 1 + items.length) % items.length);
-      else if (e.key === 'ArrowRight' && items.length > 1) onNav((index + 1) % items.length);
+      else if (e.key === 'ArrowLeft' && photos.length > 1) onNav((index - 1 + photos.length) % photos.length);
+      else if (e.key === 'ArrowRight' && photos.length > 1) onNav((index + 1) % photos.length);
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [index, items.length]);
+  }, [index, photos.length]);
   if (!it) return null;
-  const prev = (e) => { e.stopPropagation(); onNav((index - 1 + items.length) % items.length); };
-  const next = (e) => { e.stopPropagation(); onNav((index + 1) % items.length); };
-  return (
+  const prev = (e) => { e.stopPropagation(); onNav((index - 1 + photos.length) % photos.length); };
+  const next = (e) => { e.stopPropagation(); onNav((index + 1) % photos.length); };
+  return createPortal(
     <div className="media-lb" onClick={onClose}>
       <button className="lb-close" onClick={onClose} aria-label="Close">✕</button>
-      {items.length > 1 && <div className="lb-count">{index + 1} / {items.length}</div>}
-      {items.length > 1 && <button className="lb-nav lb-prev" onClick={prev} aria-label="Previous">‹</button>}
+      {photos.length > 1 && <div className="lb-count">{index + 1} / {photos.length}</div>}
+      {photos.length > 1 && <button className="lb-nav lb-prev" onClick={prev} aria-label="Previous">‹</button>}
       <div className="lb-content" onClick={(e) => e.stopPropagation()}>
         {it.type === 'image'
-          ? <img src={it.url} alt={it.title} />
+          ? <img src={it.url} alt={title} />
           : <video src={it.url} controls autoPlay playsInline />}
-        {it.title && <div className="lb-title">{it.title}</div>}
+        {title && <div className="lb-title">{title}</div>}
       </div>
-      {items.length > 1 && <button className="lb-nav lb-next" onClick={next} aria-label="Next">›</button>}
-    </div>
+      {photos.length > 1 && <button className="lb-nav lb-next" onClick={next} aria-label="Next">›</button>}
+    </div>,
+    document.body
   );
 }
 
 function MediaSection({ media }) {
-  const items = React.useMemo(() => (media || [])
+  const albums = React.useMemo(() => (media || [])
     .filter((m) => !m.vault_only)
-    .flatMap((m) => attRaw(m.file).map((f, idx) => {
-      const name = f.filename || f.url || '';
-      const isVid = (f.type || '').startsWith('video') || /\.(mp4|mov|webm|m4v)(\?|$)/i.test(name);
-      return { id: `${m.id}_${idx}`, type: isVid ? 'video' : 'image', url: f.url, thumb: att(m.thumb), title: m.title || '', category: m.category || '' };
-    }))
-    .filter((it) => it.url), [media]);
+    .map((m) => {
+      const photos = attRaw(m.file).map((f) => {
+        const name = f.filename || f.url || '';
+        const isVid = (f.type || '').startsWith('video') || /\.(mp4|mov|webm|m4v)(\?|$)/i.test(name);
+        return { type: isVid ? 'video' : 'image', url: f.url };
+      }).filter((x) => x.url);
+      const firstImg = photos.find((p) => p.type === 'image');
+      const cover = att(m.thumb) || (firstImg ? firstImg.url : (photos[0] ? photos[0].url : ''));
+      const kind = (photos[0] && photos[0].type === 'video') ? 'video' : 'image';
+      return { id: m.id, title: m.title || '', category: m.category || '', cover, kind, photos, count: photos.length };
+    })
+    .filter((a) => a.photos.length), [media]);
   const [tab, setTab] = useState('image');
   const [cat, setCat] = useState('All');
-  const [lb, setLb] = useState(null);
-  const tabItems = items.filter((it) => it.type === tab);
-  const cats = ['All', ...Array.from(new Set(tabItems.map((it) => it.category).filter(Boolean)))];
-  const shown = cat === 'All' ? tabItems : tabItems.filter((it) => it.category === cat);
-  const switchTab = (t) => { setTab(t); setCat('All'); setLb(null); };
+  const [album, setAlbum] = useState(null);
+  const [idx, setIdx] = useState(0);
+  const tabAlbums = albums.filter((a) => a.kind === tab);
+  const cats = ['All', ...Array.from(new Set(tabAlbums.map((a) => a.category).filter(Boolean)))];
+  const shown = cat === 'All' ? tabAlbums : tabAlbums.filter((a) => a.category === cat);
+  const switchTab = (t) => { setTab(t); setCat('All'); setAlbum(null); };
+  const openAlbum = (a) => { setAlbum(a); setIdx(0); };
   return (
     <section className="sec mediasec" id="media">
       <span className="eyebrow">03 — THE FEED</span>
@@ -270,18 +280,19 @@ function MediaSection({ media }) {
       )}
       {shown.length ? (
         <div className="media-grid">
-          {shown.map((it, i) => (
-            <div className="media-cell" key={it.id} onClick={() => setLb(i)}>
-              {it.type === 'image' || it.thumb
-                ? <div className="media-thumb" style={{ backgroundImage: `url(${it.type === 'image' ? it.url : it.thumb})` }} />
-                : <video className="media-thumb vidthumb" src={it.url + '#t=0.1'} muted preload="metadata" playsInline />}
-              {it.type === 'video' && <span className="media-play">▶</span>}
-              {it.title && <span className="media-cap">{it.title}</span>}
+          {shown.map((a) => (
+            <div className="media-cell" key={a.id} onClick={() => openAlbum(a)}>
+              {a.kind === 'image' || a.cover
+                ? <div className="media-thumb" style={{ backgroundImage: `url(${a.cover})` }} />
+                : <video className="media-thumb vidthumb" src={a.cover + '#t=0.1'} muted preload="metadata" playsInline />}
+              {a.kind === 'video' && <span className="media-play">▶</span>}
+              {a.count > 1 && <span className="media-badge">⬚ {a.count}</span>}
+              {a.title && <span className="media-cap">{a.title}</span>}
             </div>
           ))}
         </div>
       ) : <p className="media-empty">Nothing here yet — upload to the MEDIA table.</p>}
-      {lb !== null && <MediaLightbox items={shown} index={lb} onClose={() => setLb(null)} onNav={setLb} />}
+      {album && <MediaLightbox photos={album.photos} index={idx} title={album.title} onClose={() => setAlbum(null)} onNav={setIdx} />}
     </section>
   );
 }
