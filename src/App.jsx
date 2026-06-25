@@ -285,15 +285,49 @@ function MediaSection({ media }) {
   );
 }
 
+function PrivateContent({ packs }) {
+  return (
+    <section className="sec vault" id="private">
+      <span className="eyebrow">07 — MEMBERS ONLY</span>
+      <h2>PRIVATE CONTENT <i className="hex">⬡</i></h2>
+      {packs.length ? (
+        <div className="pv-grid">
+          {packs.map((p, i) => (
+            <div className="pv-card" key={i}>
+              <div className="pv-cover">
+                {att(p.cover) && <img className="pv-img" src={att(p.cover)} alt="" draggable="false" />}
+                <div className="pv-veil"><span className="pv-lock">⬡</span></div>
+              </div>
+              <div className="pv-info">
+                <div className="pv-title">{p.title}</div>
+                {p.blurb && <div className="pv-blurb">{p.blurb}</div>}
+                <div className="pv-row">
+                  <span className="pv-price">{p.price != null ? `$${p.price}` : ''}</span>
+                  <a className="pv-buy" href={p.paymongo_url || '#'} target="_blank" rel="noreferrer">PURCHASE NOW →</a>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : <p className="media-empty">Drops coming soon.</p>}
+    </section>
+  );
+}
+
 export default function App() {
   const data = useData();
-  const [phase, setPhase] = useState('boot');     // boot | gate | site
+  const [phase, setPhase] = useState(() => {
+    try { const t = +localStorage.getItem('nxg_seen') || 0; if (t && Date.now() - t < 12 * 3600 * 1000) return 'site'; } catch (e) {}
+    return 'boot';
+  });     // boot | gate | site
   const [member, setMember] = useState('CHENXI'); // current boot member
   const [menuOpen, setMenuOpen] = useState(false);
   const [langNote, setLangNote] = useState(false);
   const [activeLang, setActiveLang] = useState('EN');
   const [bioMember, setBioMember] = useState(null);
   const [openAlbum, setOpenAlbum] = useState(null);
+  const [bgPool, setBgPool] = useState([]);
+  const [bgUrl, setBgUrl] = useState(HERO_FALLBACK);
 
   const lastRef = useRef(null);
   const chibiRef = useRef(null), innerRef = useRef(null), pctRef = useRef(null),
@@ -312,6 +346,7 @@ export default function App() {
   const albums = pub(data && data.albums);
   const tracks = pub(data && data.tracks);
   const media = pub(data && data.media);
+  const packs = pub(data && data.private);
   const partners = pub(data && data.partners);
   let socials = pub(data && data.socials);
   if (!socials.length) socials = [
@@ -352,7 +387,32 @@ export default function App() {
     if (!reduce && flashRef.current) { flashRef.current.classList.add('go'); setTimeout(() => flashRef.current && flashRef.current.classList.remove('go'), 400); }
     setTimeout(() => setPhase('gate'), reduce ? 120 : 760);
   }
-  useEffect(() => { runBoot(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { if (phase === 'boot') runBoot(); /* eslint-disable-next-line */ }, []);
+
+  // discover landing background photos in /assets/landing (1.jpg, 2.jpg, ...)
+  useEffect(() => {
+    const found = []; let pending = 0, done = false; const MAX = 50;
+    const finalize = () => {
+      if (done) return; done = true;
+      found.sort((a, b) => a.i - b.i);
+      const urls = found.map((f) => f.url);
+      setBgPool(urls);
+      if (urls.length) setBgUrl(urls[Math.floor(Math.random() * urls.length)]);
+    };
+    for (let i = 1; i <= MAX; i++) {
+      pending++; const im = new Image(); const url = `/assets/landing/${i}.png`;
+      im.onload = () => { found.push({ i, url }); if (--pending === 0) finalize(); };
+      im.onerror = () => { if (--pending === 0) finalize(); };
+      im.src = url;
+    }
+  }, []);
+  useEffect(() => {
+    if (reduce || bgPool.length < 2) return;
+    const id = setInterval(() => {
+      setBgUrl((prev) => { let u; do { u = bgPool[Math.floor(Math.random() * bgPool.length)]; } while (u === prev && bgPool.length > 1); return u; });
+    }, 5000);
+    return () => clearInterval(id);
+  }, [bgPool]);
 
   /* ---- mouse tilt during gate ---- */
   useEffect(() => {
@@ -397,7 +457,7 @@ export default function App() {
   useEffect(() => { const id = setInterval(() => { if (audio.current.ctx && audio.current.ctx.state === 'running') setProg((p) => (p + 0.4) % 100); }, 240); return () => clearInterval(id); }, []);
 
   /* ---- enter ---- */
-  function enter() { setPhase('site'); }
+  function enter() { try { localStorage.setItem('nxg_seen', Date.now()); } catch (e) {} setPhase('site'); }
   function scrollTo(id) { setMenuOpen(false); const el = document.getElementById(id); if (el) setTimeout(() => el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' }), 200); }
   function pickLang(code) { setActiveLang(code); if (code !== 'EN') { setLangNote(true); clearTimeout(window._lt); window._lt = setTimeout(() => setLangNote(false), 1800); } }
 
@@ -409,7 +469,7 @@ export default function App() {
       {entered && (
         <main className="site">
           <section className="hero" id="home">
-            <div className="hero-bg" style={{ backgroundImage: `url(${hero})` }} />
+            <div className="hero-bg" style={{ backgroundImage: `url(${bgUrl})` }} />
             <div className="hero-fade" />
             <div className="socials">
               <span className="soc-label">LISTEN &amp; FOLLOW</span>
@@ -461,10 +521,7 @@ export default function App() {
             {copyVal(copy, 'about_body') && <p style={{ maxWidth: 620, textTransform: 'none', lineHeight: 1.7, color: 'var(--ink)', whiteSpace: 'pre-wrap' }}>{copyVal(copy, 'about_body')}</p>}
           </section>
 
-          <section className="sec vault" id="private">
-            <span className="eyebrow">07 — MEMBERS ONLY</span>
-            <h2>PRIVATE CONTENT <i className="hex">⬡</i></h2>
-          </section>
+          <PrivateContent packs={packs} />
         </main>
       )}
 
@@ -509,7 +566,7 @@ export default function App() {
       {/* ===== GATE ===== */}
       {phase !== 'boot' && (
         <section className={'overlay gate' + (phase === 'gate' ? ' show' : ' out')} style={phase === 'site' ? { pointerEvents: 'none' } : null}>
-          <div className="void" style={{ backgroundImage: `url(${hero})` }} />
+          <div className="void" style={{ backgroundImage: `url(${bgUrl})` }} />
           <div className="topbar"><span className="status"><i className="dot" /> SIGNAL ACTIVE</span><span className="est">EST · MMXXVI</span></div>
           <div className="hero-gate">
             <div className="emblem-tilt" ref={tiltRef}><img className="emblem" src={logo} alt="NXG" draggable="false" /></div>
