@@ -314,6 +314,18 @@ function PrivateContent({ packs }) {
   );
 }
 
+function BgLayers({ url }) {
+  const [cur, setCur] = useState(url);
+  const prev = useRef(url);
+  useEffect(() => { if (url !== cur) { prev.current = cur; setCur(url); } }, [url]);
+  return (
+    <>
+      <div className="bg-layer" style={{ backgroundImage: `url(${prev.current})` }} />
+      <div className="bg-layer bg-top" key={cur} style={{ backgroundImage: `url(${cur})` }} />
+    </>
+  );
+}
+
 export default function App() {
   const data = useData();
   const [phase, setPhase] = useState(() => {
@@ -410,7 +422,7 @@ export default function App() {
     if (reduce || bgPool.length < 2) return;
     const id = setInterval(() => {
       setBgUrl((prev) => { let u; do { u = bgPool[Math.floor(Math.random() * bgPool.length)]; } while (u === prev && bgPool.length > 1); return u; });
-    }, 5000);
+    }, 8000);
     return () => clearInterval(id);
   }, [bgPool]);
 
@@ -469,7 +481,7 @@ export default function App() {
       {entered && (
         <main className="site">
           <section className="hero" id="home">
-            <div className="hero-bg" style={{ backgroundImage: `url(${bgUrl})` }} />
+            <div className="hero-bg"><BgLayers url={bgUrl} /></div>
             <div className="hero-fade" />
             <div className="socials">
               <span className="soc-label">LISTEN &amp; FOLLOW</span>
@@ -566,7 +578,7 @@ export default function App() {
       {/* ===== GATE ===== */}
       {phase !== 'boot' && (
         <section className={'overlay gate' + (phase === 'gate' ? ' show' : ' out')} style={phase === 'site' ? { pointerEvents: 'none' } : null}>
-          <div className="void" style={{ backgroundImage: `url(${bgUrl})` }} />
+          <div className="void"><BgLayers url={bgUrl} /></div>
           <div className="topbar"><span className="status"><i className="dot" /> SIGNAL ACTIVE</span><span className="est">EST · MMXXVI</span></div>
           <div className="hero-gate">
             <div className="emblem-tilt" ref={tiltRef}><img className="emblem" src={logo} alt="NXG" draggable="false" /></div>
