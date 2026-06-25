@@ -226,6 +226,7 @@ function MediaLightbox({ items, index, onClose, onNav }) {
   return (
     <div className="media-lb" onClick={onClose}>
       <button className="lb-close" onClick={onClose} aria-label="Close">✕</button>
+      {items.length > 1 && <div className="lb-count">{index + 1} / {items.length}</div>}
       {items.length > 1 && <button className="lb-nav lb-prev" onClick={prev} aria-label="Previous">‹</button>}
       <div className="lb-content" onClick={(e) => e.stopPropagation()}>
         {it.type === 'image'
@@ -241,12 +242,11 @@ function MediaLightbox({ items, index, onClose, onNav }) {
 function MediaSection({ media }) {
   const items = React.useMemo(() => (media || [])
     .filter((m) => !m.vault_only)
-    .map((m) => {
-      const f = attRaw(m.file)[0];
-      const name = f ? (f.filename || f.url || '') : '';
-      const isVid = f && ((f.type || '').startsWith('video') || /\.(mp4|mov|webm|m4v)(\?|$)/i.test(name));
-      return { id: m.id, type: isVid ? 'video' : 'image', url: f ? f.url : '', thumb: att(m.thumb), title: m.title || '', category: m.category || '' };
-    })
+    .flatMap((m) => attRaw(m.file).map((f, idx) => {
+      const name = f.filename || f.url || '';
+      const isVid = (f.type || '').startsWith('video') || /\.(mp4|mov|webm|m4v)(\?|$)/i.test(name);
+      return { id: `${m.id}_${idx}`, type: isVid ? 'video' : 'image', url: f.url, thumb: att(m.thumb), title: m.title || '', category: m.category || '' };
+    }))
     .filter((it) => it.url), [media]);
   const [tab, setTab] = useState('image');
   const [cat, setCat] = useState('All');
@@ -276,6 +276,7 @@ function MediaSection({ media }) {
                 ? <div className="media-thumb" style={{ backgroundImage: `url(${it.type === 'image' ? it.url : it.thumb})` }} />
                 : <video className="media-thumb vidthumb" src={it.url + '#t=0.1'} muted preload="metadata" playsInline />}
               {it.type === 'video' && <span className="media-play">▶</span>}
+              {it.title && <span className="media-cap">{it.title}</span>}
             </div>
           ))}
         </div>
