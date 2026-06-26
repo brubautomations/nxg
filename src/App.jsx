@@ -309,6 +309,7 @@ function PrivateContent({ packs }) {
               <div className="pv-cover">
                 {p.teaser && <img className="pv-img" src={p.teaser} alt="" draggable="false" />}
                 <div className="pv-veil"><span className="pv-lock">⬡</span></div>
+                {p.count > 0 && <span className="pv-count">{p.count} PHOTOS</span>}
               </div>
               <div className="pv-info">
                 <div className="pv-title">{p.title}</div>

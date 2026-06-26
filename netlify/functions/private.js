@@ -19,6 +19,7 @@ function safe(fields) {
     order: fields.order ?? 0,
     paymongo_url: fields.paymongo_url || '',
     teaser, // single preview image url — safe, it's the public cover
+    count: Array.isArray(fields.files) ? fields.files.length : 0, // how many photos — a number only, not the files
     // NOTE: `files` is intentionally dropped here. Do not add it.
   };
 }
