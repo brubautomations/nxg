@@ -319,7 +319,7 @@ function PrivateContent({ packs }) {
                 {p.blurb && <div className="pv-blurb">{p.blurb}</div>}
                 <div className="pv-row">
                   <span className="pv-price">{p.price != null ? `$${p.price}` : ''}</span>
-                  <a className="pv-buy" href={DOORMAN_URL ? `${DOORMAN_URL}?route=buy&pack=${p.id}` : '#'}>PURCHASE NOW →</a>
+                  <a className="pv-buy" href={DOORMAN_URL ? `${DOORMAN_URL}?route=buy&pack=${p.id}` : '#'} target="_blank" rel="noopener noreferrer">PURCHASE NOW →</a>
                 </div>
               </div>
             </div>
