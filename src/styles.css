@@ -327,3 +327,13 @@ html{scroll-behavior:smooth;}
 #partners{background-image:linear-gradient(rgba(252,252,254,.74),rgba(252,252,254,.74)),url('/assets/bg/partners.png');}
 #about{background-image:linear-gradient(rgba(252,252,254,.74),rgba(252,252,254,.74)),url('/assets/bg/about.png');}
 #private{background-image:linear-gradient(rgba(252,252,254,.78),rgba(252,252,254,.78)),url('/assets/bg/private.png');}
+
+/* ===== live USD->PHP reference pill (bottom-left) ===== */
+.ratepill{position:fixed; left:18px; bottom:18px; z-index:46; display:flex; align-items:center; gap:7px;
+  padding:9px 14px; border-radius:999px; font-family:var(--mono,ui-monospace,monospace); font-size:12px; font-weight:700;
+  color:#1b1b22; background:rgba(255,255,255,.82); border:1px solid var(--line,#e7e7ee); backdrop-filter:blur(10px);
+  box-shadow:0 6px 20px rgba(20,20,40,.08);}
+.rp-dot{width:7px; height:7px; border-radius:50%; background:#21c47a; box-shadow:0 0 0 3px rgba(33,196,122,.18);}
+.rp-label{letter-spacing:.04em;} .rp-eq{opacity:.5;}
+.rp-val{background:linear-gradient(90deg,#ff2d8b,#2f7bff); -webkit-background-clip:text; background-clip:text; color:transparent;}
+@media (max-width:560px){ .ratepill{left:12px; bottom:12px; font-size:11px; padding:8px 12px;} }

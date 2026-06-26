@@ -5,6 +5,9 @@ import { useData, usePrivate, pub, copyVal, att, atts, attRaw } from './lib/data
 /* ---- bundled fallback assets (used until Airtable is populated) ---- */
 const LOGO_FALLBACK = '/assets/logo.png';
 const HERO_FALLBACK = '/assets/hero.png';
+
+/* ---- private-content doorman ---- */
+const DOORMAN_URL = 'https://script.google.com/macros/s/AKfycbz2wmyu6Y33zZ_7LIkUY05PAwg4aJPQlNsCTaRDSxSAyvNh3eM1I9GEmfOM3alK/exec';
 const CHIBI = {
   CHENXI: ['/assets/chibi/chenxi_1.png', '/assets/chibi/chenxi_2.png'],
   YOORA:  ['/assets/chibi/yoora_1.png',  '/assets/chibi/yoora_2.png'],
@@ -316,7 +319,7 @@ function PrivateContent({ packs }) {
                 {p.blurb && <div className="pv-blurb">{p.blurb}</div>}
                 <div className="pv-row">
                   <span className="pv-price">{p.price != null ? `$${p.price}` : ''}</span>
-                  <a className="pv-buy" href={p.paymongo_url || '#'} target="_blank" rel="noreferrer">PURCHASE NOW →</a>
+                  <a className="pv-buy" href={DOORMAN_URL ? `${DOORMAN_URL}?route=buy&pack=${p.id}` : '#'}>PURCHASE NOW →</a>
                 </div>
               </div>
             </div>
@@ -336,6 +339,29 @@ function BgLayers({ url }) {
       <div className="bg-layer" style={{ backgroundImage: `url(${prev.current})` }} />
       <div className="bg-layer bg-top" key={cur} style={{ backgroundImage: `url(${cur})` }} />
     </>
+  );
+}
+
+function RatePill() {
+  const [rate, setRate] = useState(null);
+  useEffect(() => {
+    let on = true;
+    const load = () => fetch('https://open.er-api.com/v6/latest/USD')
+      .then((r) => r.json())
+      .then((d) => { if (on && d && d.rates && d.rates.PHP) setRate(d.rates.PHP); })
+      .catch(() => {});
+    load();
+    const id = setInterval(load, 5 * 60 * 1000);
+    return () => { on = false; clearInterval(id); };
+  }, []);
+  if (!rate) return null;
+  return (
+    <div className="ratepill" title="Live reference rate">
+      <span className="rp-dot" />
+      <span className="rp-label">1 USD</span>
+      <span className="rp-eq">≈</span>
+      <span className="rp-val">₱{rate.toFixed(2)}</span>
+    </div>
   );
 }
 
@@ -555,6 +581,8 @@ export default function App() {
         <span className="tn-mark">NXG</span>
         <button className="burger" aria-label="Open menu" onClick={() => setMenuOpen(true)}><i /><i /><i /></button>
       </header>
+
+      {entered && <RatePill />}
 
       {/* ===== MENU ===== */}
       <nav className={'menu' + (menuOpen ? ' open' : '')} aria-hidden={!menuOpen}>
