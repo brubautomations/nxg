@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useData, pub, copyVal, att, atts, attRaw } from './lib/data.js';
+import { useData, usePrivate, pub, copyVal, att, atts, attRaw } from './lib/data.js';
 
 /* ---- bundled fallback assets (used until Airtable is populated) ---- */
 const LOGO_FALLBACK = '/assets/logo.png';
@@ -307,7 +307,7 @@ function PrivateContent({ packs }) {
           {packs.map((p, i) => (
             <div className="pv-card" key={i}>
               <div className="pv-cover">
-                {att(p.cover) && <img className="pv-img" src={att(p.cover)} alt="" draggable="false" />}
+                {p.teaser && <img className="pv-img" src={p.teaser} alt="" draggable="false" />}
                 <div className="pv-veil"><span className="pv-lock">⬡</span></div>
               </div>
               <div className="pv-info">
@@ -370,7 +370,7 @@ export default function App() {
   const albums = pub(data && data.albums);
   const tracks = pub(data && data.tracks);
   const media = pub(data && data.media);
-  const packs = pub(data && data.private);
+  const packs = usePrivate();
   const partners = pub(data && data.partners);
   let socials = pub(data && data.socials);
   if (!socials.length) socials = [

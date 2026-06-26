@@ -14,6 +14,20 @@ export function useData() {
   return data;
 }
 
+// Fetch the private storefront (separate base, teaser-only — never the real files).
+export function usePrivate() {
+  const [packs, setPacks] = useState([]);
+  useEffect(() => {
+    let on = true;
+    fetch('/.netlify/functions/private')
+      .then((r) => r.json())
+      .then((d) => { if (on) setPacks((d && d.private) || []); })
+      .catch(() => { if (on) setPacks([]); });
+    return () => { on = false; };
+  }, []);
+  return packs;
+}
+
 // only show rows with published checked, sorted by `order`
 export const pub = (arr) =>
   (arr || []).filter((r) => r.published).sort((a, b) => (a.order || 0) - (b.order || 0));
