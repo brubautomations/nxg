@@ -119,34 +119,117 @@ function SpotifyPlayer({ tracks, show, logo }) {
 }
 
 function Discography({ albums, tracks, onOpen }) {
-  const [idx, setIdx] = useState(0);
   if (!albums.length) {
     return (<section className="sec discsec" id="discography"><span className="eyebrow b">02 — RELEASES</span><h2>DISCOGRAPHY</h2></section>);
   }
-  const a = albums[Math.min(idx, albums.length - 1)];
-  const prev = () => setIdx((i) => (i - 1 + albums.length) % albums.length);
-  const next = () => setIdx((i) => (i + 1) % albums.length);
+  const N = albums.length;
+  const vpRef = useRef(null);
+  const beltRef = useRef(null);
+  const S = useRef({ tx: 0, target: 0, vel: 0, dragging: false, lastX: 0, step: 320, cw: 280, mid: 0, abs: 0 });
+  const [active, setActive] = useState(0);
+
+  // track count per album (from linked TRACKS)
+  const counts = React.useMemo(() => albums.map((a) =>
+    (tracks || []).filter((t) => Array.isArray(t.album) && t.album.indexOf(a.id) !== -1).length), [albums, tracks]);
+
+  // how many copies to render so the loop never shows an edge
+  const COPIES = React.useMemo(() => {
+    const w = typeof window !== 'undefined' ? window.innerWidth : 1440;
+    let c = Math.max(7, Math.ceil((w * 3) / (N * 320)));
+    if (c % 2 === 0) c++;
+    return c;
+  }, [N]);
+  const MID = Math.floor(COPIES / 2) * N;
+
+  const items = [];
+  for (let c = 0; c < COPIES; c++) for (let i = 0; i < N; i++) items.push({ a: albums[i], real: i, abs: c * N + i });
+
+  useEffect(() => {
+    const vp = vpRef.current, belt = beltRef.current;
+    if (!vp || !belt) return;
+    const cards = [].slice.call(belt.children);
+    let raf, lastReal = -1;
+    const measure = () => {
+      S.current.cw = cards[0].offsetWidth;
+      S.current.step = cards.length > 1 ? (cards[1].offsetLeft - cards[0].offsetLeft) : (S.current.cw + 40);
+      S.current.mid = MID;
+    };
+    const vc = () => vp.clientWidth / 2;
+    const centerTx = (abs) => vc() - S.current.cw / 2 - abs * S.current.step;
+    const activeAbs = () => Math.round((vc() - S.current.cw / 2 - S.current.tx) / S.current.step);
+    const realIdx = () => ((activeAbs() % N) + N) % N;
+    const wrap = () => { const sh = Math.round((activeAbs() - MID) / N); if (sh) { const d = sh * N * S.current.step; S.current.tx += d; S.current.target += d; } };
+    const render = () => {
+      belt.style.transform = `translate3d(${S.current.tx}px,-50%,0)`;
+      const center = vc(), act = activeAbs();
+      cards.forEach((el, i) => {
+        const cc = S.current.tx + i * S.current.step + S.current.cw / 2;
+        const dist = Math.min(Math.abs(cc - center) / (S.current.step * 1.4), 1);
+        el.style.transform = `scale(${1 - dist * 0.30})`;
+        el.style.opacity = (1 - dist * 0.5).toFixed(3);
+        el.style.zIndex = String(100 - Math.round(dist * 100));
+        el.classList.toggle('on', i === act);
+      });
+    };
+    const loop = () => {
+      const s = S.current;
+      if (!s.dragging) {
+        if (Math.abs(s.vel) > 0.3) { s.tx += s.vel; s.vel *= 0.93; if (Math.abs(s.vel) <= 0.3) s.target = centerTx(activeAbs()); }
+        else { s.tx += (s.target - s.tx) * 0.12; }
+      }
+      wrap(); render();
+      s.abs = activeAbs();
+      const r = realIdx(); if (r !== lastReal) { lastReal = r; setActive(r); }
+      raf = requestAnimationFrame(loop);
+    };
+    const down = (e) => { S.current.dragging = true; S.current.lastX = e.clientX; S.current.vel = 0; vp.setPointerCapture(e.pointerId); };
+    const move = (e) => { if (!S.current.dragging) return; const dx = e.clientX - S.current.lastX; S.current.lastX = e.clientX; S.current.tx += dx; S.current.vel = dx; };
+    const up = () => { if (!S.current.dragging) return; S.current.dragging = false; if (Math.abs(S.current.vel) <= 0.3) S.current.target = centerTx(activeAbs()); };
+    const wheel = (e) => { e.preventDefault(); S.current.tx -= (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY); S.current.vel = 0; clearTimeout(vp._wt); vp._wt = setTimeout(() => { S.current.target = centerTx(activeAbs()); }, 90); };
+    const key = (e) => { if (e.key === 'ArrowRight') S.current.target = centerTx(activeAbs() + 1); else if (e.key === 'ArrowLeft') S.current.target = centerTx(activeAbs() - 1); };
+    const resize = () => { measure(); S.current.target = centerTx(activeAbs()); };
+
+    measure();
+    S.current.tx = centerTx(MID); S.current.target = S.current.tx;
+    vp.addEventListener('pointerdown', down); vp.addEventListener('pointermove', move);
+    vp.addEventListener('pointerup', up); vp.addEventListener('pointercancel', up);
+    vp.addEventListener('wheel', wheel, { passive: false });
+    window.addEventListener('keydown', key); window.addEventListener('resize', resize);
+    loop();
+    // expose nav for arrow buttons / card clicks
+    S.current.nav = (dir) => { S.current.target = centerTx(activeAbs() + dir); };
+    S.current.tapAbs = (abs) => { if (abs === S.current.abs) onOpen(albums[((abs % N) + N) % N]); else S.current.target = centerTx(abs); };
+    return () => {
+      cancelAnimationFrame(raf);
+      vp.removeEventListener('pointerdown', down); vp.removeEventListener('pointermove', move);
+      vp.removeEventListener('pointerup', up); vp.removeEventListener('pointercancel', up);
+      vp.removeEventListener('wheel', wheel); window.removeEventListener('keydown', key); window.removeEventListener('resize', resize);
+    };
+  }, [albums, tracks]);
+
+  const a = albums[active];
   return (
     <section className="sec discsec" id="discography">
       <span className="eyebrow b">02 — RELEASES</span>
       <h2>DISCOGRAPHY</h2>
-      <div className="disc-stage">
-        {albums.length > 1 && <button className="disc-arrow" onClick={prev} aria-label="Previous album">‹</button>}
-        <div className="disc-feat" onClick={() => onOpen(a)}>
-          <img className="disc-cover" src={att(a.cover)} alt={a.title} />
-          <div className="disc-title">{a.title}</div>
-          {a.release_date && <div className="disc-date">{a.release_date}</div>}
-          <span className="disc-view">VIEW ALBUM →</span>
-        </div>
-        {albums.length > 1 && <button className="disc-arrow" onClick={next} aria-label="Next album">›</button>}
-      </div>
-      {albums.length > 1 && (
-        <div className="disc-strip">
-          {albums.map((al, i) => (
-            <img key={i} className={'disc-thumb' + (i === idx ? ' on' : '')} src={att(al.cover)} alt={al.title} onClick={() => setIdx(i)} />
+      <div className="disc-belt-vp" ref={vpRef}>
+        <div className="disc-belt" ref={beltRef}>
+          {items.map((it) => (
+            <div className="disc-card" key={it.abs} onClick={() => S.current.tapAbs && S.current.tapAbs(it.abs)}>
+              <img src={att(it.a.cover)} alt={it.a.title} draggable="false" />
+            </div>
           ))}
         </div>
-      )}
+      </div>
+      <div className="disc-readout">
+        {N > 1 && <button className="disc-arrow" onClick={() => S.current.nav && S.current.nav(-1)} aria-label="Previous album">‹</button>}
+        <div className="disc-read-mid" onClick={() => onOpen(a)}>
+          <div className="disc-title">{a.title}</div>
+          <div className="disc-date">{[a.release_date, counts[active] ? `${counts[active]} TRACKS` : ''].filter(Boolean).join(' · ')}</div>
+          <span className="disc-view">VIEW ALBUM →</span>
+        </div>
+        {N > 1 && <button className="disc-arrow" onClick={() => S.current.nav && S.current.nav(1)} aria-label="Next album">›</button>}
+      </div>
     </section>
   );
 }
