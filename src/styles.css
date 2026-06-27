@@ -330,6 +330,15 @@ button{font-family:inherit;}
   background:rgba(255,255,255,.06); color:#fff; font-size:13px; transition:.2s;}
 .sp-next:hover{border-color:var(--pink); color:var(--pink);}
 .sp-next:focus-visible{outline:2px solid var(--blue); outline-offset:2px;}
+.sp-min{width:26px; height:26px; border-radius:50%; cursor:pointer; border:1px solid rgba(255,255,255,.18);
+  background:rgba(255,255,255,.06); color:#fff; font-size:13px; line-height:1; transition:.2s;}
+.sp-min:hover{border-color:var(--blue); color:var(--blue);}
+.sp-min:focus-visible{outline:2px solid var(--blue); outline-offset:2px;}
+/* minimized: collapse to just the NXG logo, music keeps playing */
+.splayer.min{width:auto; padding:8px 10px; cursor:pointer;}
+.splayer.min .sp-now,.splayer.min .sp-next{display:none;}
+.splayer.min .sp-logo{height:22px;}
+.splayer.min iframe{position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; left:-9999px;}
 
 /* ===== player ===== */
 .player{position:fixed; right:18px; bottom:18px; z-index:45; display:none; align-items:center; gap:10px;
@@ -400,6 +409,6 @@ html{scroll-behavior:smooth;}
   .player .pl-track{ font-size:10px; letter-spacing:.08em; }
   .player .pl-prog{ margin-top:5px; }
   .player .pl-btn,.player .pl-mute{ width:28px; height:28px; }
-  /* landing image: show the WHOLE photo on mobile (no crop) */
-  .void,.hero-bg{ background-size:contain; background-position:center; }
+  /* landing image: show the WHOLE photo on mobile (no crop) — bg-layer is the real element */
+  .void .bg-layer,.hero-bg .bg-layer{ background-size:contain; background-position:center; }
 }

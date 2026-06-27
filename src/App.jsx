@@ -121,6 +121,7 @@ function SpotifyPlayer({ tracks, show, logo }) {
     return urls.length ? urls : (FALLBACK_SPOTIFY ? [FALLBACK_SPOTIFY] : []);
   }, [tracks]);
   const [i, setI] = useState(0);
+  const [min, setMin] = useState(false);
   useEffect(() => {
     if (!pool.length) return;
     const last = sessionStorage.getItem('nxg_last');
@@ -134,11 +135,12 @@ function SpotifyPlayer({ tracks, show, logo }) {
   };
   if (!src) return null;
   return (
-    <div className={'splayer' + (show ? ' show' : '')}>
+    <div className={'splayer' + (show ? ' show' : '') + (min ? ' min' : '')} onClick={() => { if (min) setMin(false); }}>
       <div className="sp-top">
         <img className="sp-logo" src={logo} alt="NXG" />
         <span className="sp-now">NOW PLAYING</span>
-        {pool.length > 1 && <button className="sp-next" onClick={shuffle} aria-label="Shuffle">⤿</button>}
+        {pool.length > 1 && <button className="sp-next" onClick={(e) => { e.stopPropagation(); shuffle(); }} aria-label="Shuffle">⤿</button>}
+        <button className="sp-min" onClick={(e) => { e.stopPropagation(); setMin((m) => !m); }} aria-label={min ? 'Expand player' : 'Minimize player'} title={min ? 'Expand' : 'Minimize'}>{min ? '▢' : '—'}</button>
       </div>
       <iframe title="NXG player" src={src} width="100%" height="80" frameBorder="0"
         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"
