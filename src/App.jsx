@@ -174,27 +174,27 @@ function Belt({ items, renderCard, onTap, size = 'md', controllerRef, onActive, 
       const r = ((s.abs % N) + N) % N; if (r !== lastReal) { lastReal = r; setActive(r); onActive && onActive(r); }
       raf = requestAnimationFrame(loop);
     };
-    const down = (e) => { S.current.dragging = true; S.current.lastX = e.clientX; S.current.vel = 0; S.current.moved = 0; vp.setPointerCapture(e.pointerId); };
     const move = (e) => { if (!S.current.dragging) return; const dx = e.clientX - S.current.lastX; S.current.lastX = e.clientX; S.current.tx += dx; S.current.vel = dx; S.current.moved += Math.abs(dx); };
-    const up = () => { if (!S.current.dragging) return; S.current.dragging = false; if (Math.abs(S.current.vel) <= 0.3) S.current.target = centerTx(activeAbs()); };
+    const up = () => { if (!S.current.dragging) return; S.current.dragging = false; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); if (Math.abs(S.current.vel) <= 0.3) S.current.target = centerTx(activeAbs()); };
+    const down = (e) => { S.current.dragging = true; S.current.lastX = e.clientX; S.current.vel = 0; S.current.moved = 0; window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); };
     const wheel = (e) => { e.preventDefault(); S.current.tx -= (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY); S.current.vel = 0; clearTimeout(vp._wt); vp._wt = setTimeout(() => { S.current.target = centerTx(activeAbs()); }, 90); };
     const key = (e) => { if (e.key === 'ArrowRight') S.current.target = centerTx(activeAbs() + 1); else if (e.key === 'ArrowLeft') S.current.target = centerTx(activeAbs() - 1); };
     const resize = () => { measure(); S.current.target = centerTx(activeAbs()); };
 
     measure();
     S.current.tx = centerTx(MID); S.current.target = S.current.tx;
-    vp.addEventListener('pointerdown', down); vp.addEventListener('pointermove', move);
-    vp.addEventListener('pointerup', up); vp.addEventListener('pointercancel', up);
+    vp.addEventListener('pointerdown', down);
     vp.addEventListener('wheel', wheel, { passive: false });
     window.addEventListener('keydown', key); window.addEventListener('resize', resize);
     loop();
     S.current.nav = (dir) => { S.current.target = centerTx(activeAbs() + dir); };
-    S.current.tapAbs = (abs) => { if (S.current.moved > 6) return; if (abs === S.current.abs) { onTap && onTap(items[((abs % N) + N) % N], ((abs % N) + N) % N); } else { S.current.target = centerTx(abs); } };
+    // a clean tap (not a drag) opens that album directly
+    S.current.tapAbs = (abs) => { if (S.current.moved > 6) return; const real = ((abs % N) + N) % N; onTap && onTap(items[real], real); };
     if (controllerRef) controllerRef.current = { nav: (d) => S.current.nav(d) };
     return () => {
       cancelAnimationFrame(raf);
-      vp.removeEventListener('pointerdown', down); vp.removeEventListener('pointermove', move);
-      vp.removeEventListener('pointerup', up); vp.removeEventListener('pointercancel', up);
+      vp.removeEventListener('pointerdown', down);
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
       vp.removeEventListener('wheel', wheel); window.removeEventListener('keydown', key); window.removeEventListener('resize', resize);
     };
   }, [resetKey, N]);
