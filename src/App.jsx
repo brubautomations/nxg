@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useData, usePrivate, pub, copyVal, att, atts, attRaw } from './lib/data.js';
 import { initSmoothScroll } from './lib/smoothScroll.js';
+import { setupReveals } from './lib/reveals.js';
 
 /* ---- bundled fallback assets (used until Airtable is populated) ---- */
 const LOGO_FALLBACK = '/assets/logo.png';
@@ -546,6 +547,18 @@ export default function App() {
 
   // Stage 1 — buttery smooth scrolling (Lenis + GSAP ticker). Reduced-motion safe.
   useEffect(() => { const cleanup = initSmoothScroll(); return cleanup; }, []);
+
+  // Stage 2 — scroll-reveal. Re-applies when the site appears or content counts change.
+  const revealsRef = useRef(null);
+  useEffect(() => {
+    if (phase !== 'site') return;
+    const id = requestAnimationFrame(() => {
+      if (revealsRef.current) revealsRef.current();
+      revealsRef.current = setupReveals(document.getElementById('root') || document);
+    });
+    return () => { cancelAnimationFrame(id); if (revealsRef.current) { revealsRef.current(); revealsRef.current = null; } };
+    // eslint-disable-next-line
+  }, [phase, members.length, albums.length, media.length, packs.length, partners.length, merch.length]);
 
   // discover landing background photos in /assets/landing (1.jpg, 2.jpg, ...)
   useEffect(() => {
