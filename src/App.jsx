@@ -728,7 +728,7 @@ export default function App() {
             <h2>PARTNERS</h2>
             {partners.length ? (
               <Belt
-                items={partners} size="sm" resetKey={partners.length}
+                items={partners} size="md" resetKey={partners.length}
                 onTap={(p) => { if (p.url) window.open(p.url, '_blank', 'noopener'); }}
                 renderCard={(p) => (
                   <>
