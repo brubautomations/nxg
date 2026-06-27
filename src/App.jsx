@@ -118,46 +118,38 @@ function SpotifyPlayer({ tracks, show, logo }) {
   );
 }
 
-function Discography({ albums, tracks, onOpen }) {
-  if (!albums.length) {
-    return (<section className="sec discsec" id="discography"><span className="eyebrow b">02 — RELEASES</span><h2>DISCOGRAPHY</h2></section>);
-  }
-  const N = albums.length;
-  const vpRef = useRef(null);
-  const beltRef = useRef(null);
-  const S = useRef({ tx: 0, target: 0, vel: 0, dragging: false, lastX: 0, step: 320, cw: 280, mid: 0, abs: 0 });
+/* ===== shared endless conveyor belt ===== */
+function Belt({ items, renderCard, onTap, size = 'md', controllerRef, onActive, resetKey, arrows = true }) {
+  const N = items.length;
+  const vpRef = useRef(null), beltRef = useRef(null);
+  const S = useRef({ tx: 0, target: 0, vel: 0, dragging: false, lastX: 0, step: 320, cw: 280, moved: 0, abs: 0 });
   const [active, setActive] = useState(0);
-
-  // track count per album (from linked TRACKS)
-  const counts = React.useMemo(() => albums.map((a) =>
-    (tracks || []).filter((t) => Array.isArray(t.album) && t.album.indexOf(a.id) !== -1).length), [albums, tracks]);
-
-  // how many copies to render so the loop never shows an edge
+  const estW = size === 'sm' ? 200 : size === 'lg' ? 380 : 340;
   const COPIES = React.useMemo(() => {
     const w = typeof window !== 'undefined' ? window.innerWidth : 1440;
-    let c = Math.max(7, Math.ceil((w * 3) / (N * 320)));
+    let c = Math.max(7, Math.ceil((w * 3) / (Math.max(1, N) * estW)));
     if (c % 2 === 0) c++;
     return c;
-  }, [N]);
+  }, [N, estW]);
   const MID = Math.floor(COPIES / 2) * N;
 
-  const items = [];
-  for (let c = 0; c < COPIES; c++) for (let i = 0; i < N; i++) items.push({ a: albums[i], real: i, abs: c * N + i });
+  const cells = [];
+  if (N) for (let c = 0; c < COPIES; c++) for (let i = 0; i < N; i++) cells.push({ item: items[i], real: i, abs: c * N + i });
+
+  const wasDrag = () => S.current.moved > 6;
 
   useEffect(() => {
     const vp = vpRef.current, belt = beltRef.current;
-    if (!vp || !belt) return;
+    if (!vp || !belt || !N) return;
     const cards = [].slice.call(belt.children);
     let raf, lastReal = -1;
     const measure = () => {
       S.current.cw = cards[0].offsetWidth;
       S.current.step = cards.length > 1 ? (cards[1].offsetLeft - cards[0].offsetLeft) : (S.current.cw + 40);
-      S.current.mid = MID;
     };
     const vc = () => vp.clientWidth / 2;
     const centerTx = (abs) => vc() - S.current.cw / 2 - abs * S.current.step;
     const activeAbs = () => Math.round((vc() - S.current.cw / 2 - S.current.tx) / S.current.step);
-    const realIdx = () => ((activeAbs() % N) + N) % N;
     const wrap = () => { const sh = Math.round((activeAbs() - MID) / N); if (sh) { const d = sh * N * S.current.step; S.current.tx += d; S.current.target += d; } };
     const render = () => {
       belt.style.transform = `translate3d(${S.current.tx}px,-50%,0)`;
@@ -177,13 +169,12 @@ function Discography({ albums, tracks, onOpen }) {
         if (Math.abs(s.vel) > 0.3) { s.tx += s.vel; s.vel *= 0.93; if (Math.abs(s.vel) <= 0.3) s.target = centerTx(activeAbs()); }
         else { s.tx += (s.target - s.tx) * 0.12; }
       }
-      wrap(); render();
-      s.abs = activeAbs();
-      const r = realIdx(); if (r !== lastReal) { lastReal = r; setActive(r); }
+      wrap(); render(); s.abs = activeAbs();
+      const r = ((s.abs % N) + N) % N; if (r !== lastReal) { lastReal = r; setActive(r); onActive && onActive(r); }
       raf = requestAnimationFrame(loop);
     };
-    const down = (e) => { S.current.dragging = true; S.current.lastX = e.clientX; S.current.vel = 0; vp.setPointerCapture(e.pointerId); };
-    const move = (e) => { if (!S.current.dragging) return; const dx = e.clientX - S.current.lastX; S.current.lastX = e.clientX; S.current.tx += dx; S.current.vel = dx; };
+    const down = (e) => { S.current.dragging = true; S.current.lastX = e.clientX; S.current.vel = 0; S.current.moved = 0; vp.setPointerCapture(e.pointerId); };
+    const move = (e) => { if (!S.current.dragging) return; const dx = e.clientX - S.current.lastX; S.current.lastX = e.clientX; S.current.tx += dx; S.current.vel = dx; S.current.moved += Math.abs(dx); };
     const up = () => { if (!S.current.dragging) return; S.current.dragging = false; if (Math.abs(S.current.vel) <= 0.3) S.current.target = centerTx(activeAbs()); };
     const wheel = (e) => { e.preventDefault(); S.current.tx -= (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY); S.current.vel = 0; clearTimeout(vp._wt); vp._wt = setTimeout(() => { S.current.target = centerTx(activeAbs()); }, 90); };
     const key = (e) => { if (e.key === 'ArrowRight') S.current.target = centerTx(activeAbs() + 1); else if (e.key === 'ArrowLeft') S.current.target = centerTx(activeAbs() - 1); };
@@ -196,39 +187,67 @@ function Discography({ albums, tracks, onOpen }) {
     vp.addEventListener('wheel', wheel, { passive: false });
     window.addEventListener('keydown', key); window.addEventListener('resize', resize);
     loop();
-    // expose nav for arrow buttons / card clicks
     S.current.nav = (dir) => { S.current.target = centerTx(activeAbs() + dir); };
-    S.current.tapAbs = (abs) => { if (abs === S.current.abs) onOpen(albums[((abs % N) + N) % N]); else S.current.target = centerTx(abs); };
+    S.current.tapAbs = (abs) => { if (S.current.moved > 6) return; if (abs === S.current.abs) { onTap && onTap(items[((abs % N) + N) % N], ((abs % N) + N) % N); } else { S.current.target = centerTx(abs); } };
+    if (controllerRef) controllerRef.current = { nav: (d) => S.current.nav(d) };
     return () => {
       cancelAnimationFrame(raf);
       vp.removeEventListener('pointerdown', down); vp.removeEventListener('pointermove', move);
       vp.removeEventListener('pointerup', up); vp.removeEventListener('pointercancel', up);
       vp.removeEventListener('wheel', wheel); window.removeEventListener('keydown', key); window.removeEventListener('resize', resize);
     };
-  }, [albums, tracks]);
+  }, [resetKey, N]);
 
+  if (!N) return null;
+  return (
+    <>
+      <div className={'belt-vp ' + size} ref={vpRef}>
+        <div className="belt-track" ref={beltRef}>
+          {cells.map((c) => (
+            <div className="belt-card" key={c.abs} onClick={() => S.current.tapAbs && S.current.tapAbs(c.abs)}>
+              {renderCard(c.item, c.real, { wasDrag })}
+            </div>
+          ))}
+        </div>
+      </div>
+      {arrows && N > 1 && (
+        <div className="belt-arrows">
+          <button className="disc-arrow" onClick={() => S.current.nav && S.current.nav(-1)} aria-label="Previous">‹</button>
+          <button className="disc-arrow" onClick={() => S.current.nav && S.current.nav(1)} aria-label="Next">›</button>
+        </div>
+      )}
+    </>
+  );
+}
+
+function Discography({ albums, tracks, onOpen }) {
+  const [active, setActive] = useState(0);
+  const counts = React.useMemo(() => albums.map((a) =>
+    (tracks || []).filter((t) => Array.isArray(t.album) && t.album.indexOf(a.id) !== -1).length), [albums, tracks]);
+  if (!albums.length) {
+    return (<section className="sec discsec" id="discography"><span className="eyebrow b">02 — RELEASES</span><h2>DISCOGRAPHY</h2></section>);
+  }
+  const ctrl = useRef(null);
   const a = albums[active];
   return (
     <section className="sec discsec" id="discography">
       <span className="eyebrow b">02 — RELEASES</span>
       <h2>DISCOGRAPHY</h2>
-      <div className="disc-belt-vp" ref={vpRef}>
-        <div className="disc-belt" ref={beltRef}>
-          {items.map((it) => (
-            <div className="disc-card" key={it.abs} onClick={() => S.current.tapAbs && S.current.tapAbs(it.abs)}>
-              <img src={att(it.a.cover)} alt={it.a.title} draggable="false" />
-            </div>
-          ))}
-        </div>
-      </div>
+      <Belt
+        items={albums} size="md" arrows={false} resetKey={albums.length}
+        controllerRef={ctrl} onActive={setActive} onTap={(al) => onOpen(al)}
+        renderCard={(al) => (
+          <div className="bc-frame"><img className="bc-img" src={att(al.cover)} alt={al.title} draggable="false" /></div>
+        )}
+      />
       <div className="disc-readout">
-        {N > 1 && <button className="disc-arrow" onClick={() => S.current.nav && S.current.nav(-1)} aria-label="Previous album">‹</button>}
+        {albums.length > 1 && <button className="disc-arrow" onClick={() => ctrl.current && ctrl.current.nav(-1)} aria-label="Previous album">‹</button>}
         <div className="disc-read-mid" onClick={() => onOpen(a)}>
           <div className="disc-title">{a.title}</div>
           <div className="disc-date">{[a.release_date, counts[active] ? `${counts[active]} TRACKS` : ''].filter(Boolean).join(' · ')}</div>
           <span className="disc-view">VIEW ALBUM →</span>
         </div>
-        {N > 1 && <button className="disc-arrow" onClick={() => S.current.nav && S.current.nav(1)} aria-label="Next album">›</button>}
+        {albums.length > 1 && <button className="disc-arrow" onClick={() => ctrl.current && ctrl.current.nav(1)} aria-label="Next album">›</button>}
       </div>
     </section>
   );
@@ -365,18 +384,20 @@ function MediaSection({ media }) {
         </div>
       )}
       {shown.length ? (
-        <div className="media-grid">
-          {shown.map((a) => (
-            <div className="media-cell" key={a.id} onClick={() => openAlbum(a)}>
-              {a.kind === 'image' || a.cover
-                ? <div className="media-thumb" style={{ backgroundImage: `url(${a.cover})` }} />
-                : <video className="media-thumb vidthumb" src={a.cover + '#t=0.1'} muted preload="metadata" playsInline />}
-              {a.kind === 'video' && <span className="media-play">▶</span>}
-              {a.count > 1 && <span className="media-badge">⬚ {a.count}</span>}
-              {a.title && <span className="media-cap">{a.title}</span>}
-            </div>
-          ))}
-        </div>
+        <Belt
+          items={shown} size="md" resetKey={`${tab}-${cat}-${shown.length}`}
+          onTap={(a) => openAlbum(a)}
+          renderCard={(a) => (
+            <>
+              <div className="bc-frame">
+                <div className="bc-bg" style={{ backgroundImage: `url(${a.cover})` }} />
+                {a.kind === 'video' && <span className="bc-play">▶</span>}
+                {a.count > 1 && <span className="bc-badge">⬚ {a.count}</span>}
+              </div>
+              {a.title && <span className="bc-cap">{a.title}</span>}
+            </>
+          )}
+        />
       ) : <p className="media-empty">Nothing here yet — upload to the MEDIA table.</p>}
       {album && <MediaLightbox photos={album.photos} index={idx} title={album.title} onClose={() => setAlbum(null)} onNav={setIdx} />}
     </section>
@@ -389,25 +410,23 @@ function PrivateContent({ packs }) {
       <span className="eyebrow">07 — MEMBERS ONLY</span>
       <h2>PRIVATE CONTENT <i className="hex">⬡</i></h2>
       {packs.length ? (
-        <div className="pv-grid">
-          {packs.map((p, i) => (
-            <div className="pv-card" key={i}>
-              <div className="pv-cover">
-                {p.teaser && <img className="pv-img" src={p.teaser} alt="" draggable="false" />}
-                <div className="pv-veil"><span className="pv-lock">⬡</span></div>
-                {p.count > 0 && <span className="pv-count">{p.count} PHOTOS</span>}
+        <Belt
+          items={packs} size="md" resetKey={packs.length} onTap={() => {}}
+          renderCard={(p, i, api) => (
+            <>
+              <div className="bc-frame">
+                {p.teaser && <img className="bc-img bc-blur" src={p.teaser} alt="" draggable="false" />}
+                <div className="bc-veil"><span>⬡</span></div>
+                {p.price != null && <span className="bc-price">${p.price}</span>}
+                {p.count > 0 && <span className="bc-badge">{p.count} PHOTOS</span>}
               </div>
-              <div className="pv-info">
-                <div className="pv-title">{p.title}</div>
-                {p.blurb && <div className="pv-blurb">{p.blurb}</div>}
-                <div className="pv-row">
-                  <span className="pv-price">{p.price != null ? `$${p.price}` : ''}</span>
-                  <a className="pv-buy" href={DOORMAN_URL ? `${DOORMAN_URL}?route=buy&pack=${p.id}` : '#'} target="_blank" rel="noopener noreferrer">PURCHASE NOW →</a>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              <span className="bc-cap">{p.title}</span>
+              <a className="bc-btn" href={DOORMAN_URL ? `${DOORMAN_URL}?route=buy&pack=${p.id}` : '#'}
+                 target="_blank" rel="noopener noreferrer"
+                 onClick={(e) => { if (api.wasDrag()) { e.preventDefault(); } }}>UNLOCK →</a>
+            </>
+          )}
+        />
       ) : <p className="media-empty">Drops coming soon.</p>}
     </section>
   );
@@ -482,6 +501,7 @@ export default function App() {
   const media = pub(data && data.media);
   const packs = usePrivate();
   const partners = pub(data && data.partners);
+  const merch = pub(data && data.merch);
   let socials = pub(data && data.socials);
   if (!socials.length) socials = [
     { platform: 'Spotify', url: '#' }, { platform: 'YouTube', url: '#' },
@@ -631,22 +651,38 @@ export default function App() {
           <section className="sec" id="merch">
             <span className="eyebrow b">04 — SHOP</span>
             <h2>MERCH</h2>
-            <p>coming soon</p>
+            {merch.length ? (
+              <Belt
+                items={merch} size="lg" resetKey={merch.length} onTap={() => {}}
+                renderCard={(m) => (
+                  <>
+                    <div className="bc-frame">
+                      <img className="bc-img" src={att(m.image) || att(m.photo) || att(m.cover)} alt={m.name || m.title} draggable="false" />
+                      {m.price != null && <span className="bc-price">${m.price}</span>}
+                    </div>
+                    <span className="bc-cap">{m.name || m.title}</span>
+                    <button className="bc-btn ghost" disabled>STORE OPENS SOON</button>
+                  </>
+                )}
+              />
+            ) : <p className="media-empty">Store opening soon.</p>}
           </section>
 
           <section className="sec" id="partners">
             <span className="eyebrow">05 — NXG IRL</span>
             <h2>PARTNERS</h2>
-            {partners.length > 0 && (
-              <div className="alb-grid">
-                {partners.map((p, i) => (
-                  <a className="alb" key={i} href={p.url || '#'} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <img className="cover" src={att(p.logo)} alt={p.name} />
-                    <div className="alb-t">{p.name}</div>
-                  </a>
-                ))}
-              </div>
-            )}
+            {partners.length ? (
+              <Belt
+                items={partners} size="sm" resetKey={partners.length}
+                onTap={(p) => { if (p.url) window.open(p.url, '_blank', 'noopener'); }}
+                renderCard={(p) => (
+                  <>
+                    <div className="bc-frame bc-logo"><img className="bc-img" src={att(p.logo)} alt={p.name} draggable="false" /></div>
+                    {p.name && <span className="bc-cap">{p.name}</span>}
+                  </>
+                )}
+              />
+            ) : <p className="media-empty">Partners revealed soon.</p>}
           </section>
 
           <section className="sec" id="about">

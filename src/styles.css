@@ -133,6 +133,32 @@ button{font-family:inherit;}
 .disc-card.on{box-shadow:0 26px 60px rgba(20,10,40,.24);}
 .disc-readout{display:flex; align-items:center; justify-content:center; gap:18px; margin-top:18px;}
 .disc-read-mid{display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; min-width:60vw; max-width:560px;}
+/* ===== shared belt (used by discography, media, merch, partners, private) ===== */
+.belt-vp{position:relative; width:100%; overflow:hidden; cursor:grab; touch-action:pan-y; user-select:none; margin-top:8px;}
+.belt-vp:active{cursor:grabbing;}
+.belt-vp.sm{height:min(40vh,260px);}
+.belt-vp.md{height:min(54vh,400px);}
+.belt-vp.lg{height:min(60vh,440px);}
+.belt-track{position:absolute; top:50%; left:0; display:flex; align-items:center;}
+.belt-card{flex:0 0 auto; margin-right:40px; transform-origin:center; will-change:transform,opacity; cursor:pointer; position:relative; display:flex; flex-direction:column; align-items:center;}
+.belt-vp.sm .belt-card{width:min(50vw,180px);}
+.belt-vp.md .belt-card{width:min(72vw,300px);}
+.belt-vp.lg .belt-card{width:min(80vw,340px);}
+.bc-frame{position:relative; width:100%; aspect-ratio:1; border-radius:18px; overflow:hidden; border:1px solid var(--line); box-shadow:0 18px 44px rgba(20,10,40,.16); background:#f1ecf2;}
+.belt-card.on .bc-frame{box-shadow:0 26px 60px rgba(20,10,40,.24);}
+.bc-frame.bc-logo{background:#fff; display:flex; align-items:center; justify-content:center;}
+.bc-frame.bc-logo .bc-img{object-fit:contain; padding:18%;}
+.bc-img{width:100%; height:100%; object-fit:cover; display:block; pointer-events:none;}
+.bc-bg{width:100%; height:100%; background-size:cover; background-position:center; pointer-events:none;}
+.bc-blur{filter:blur(7px); transform:scale(1.06);}
+.bc-veil{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:30px; color:#fff; background:rgba(20,10,30,.18);}
+.bc-play{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:34px; color:#fff; text-shadow:0 2px 14px rgba(0,0,0,.5); pointer-events:none;}
+.bc-badge{position:absolute; top:12px; right:12px; background:rgba(0,0,0,.6); color:#fff; font-size:10px; letter-spacing:.1em; padding:5px 9px; border-radius:999px;}
+.bc-price{position:absolute; top:12px; left:12px; background:#fff; color:var(--ink); font-weight:800; font-size:13px; padding:5px 10px; border-radius:999px; box-shadow:0 4px 12px rgba(0,0,0,.12);}
+.bc-cap{display:block; text-align:center; font-weight:700; font-size:14px; letter-spacing:.03em; margin-top:10px; max-width:100%;}
+.bc-btn{display:block; width:100%; margin-top:8px; text-align:center; font-size:11px; letter-spacing:.16em; font-weight:700; padding:11px; border-radius:999px; border:none; cursor:pointer; color:#fff; background:linear-gradient(100deg,var(--pink),var(--blue)); text-decoration:none;}
+.bc-btn.ghost{background:#fff; color:var(--dim); border:1px solid var(--line); cursor:default;}
+.belt-arrows{display:flex; gap:10px; justify-content:center; margin-top:18px;}
 
 /* ===== album overlay ===== */
 .album-panel{position:relative; width:min(900px,96vw); height:min(86vh,820px); background:var(--bg); border-radius:20px;
