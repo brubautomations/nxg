@@ -532,6 +532,7 @@ export default function App() {
   const settings = (data && data.settings && data.settings[0]) || {};
   const logo = att(settings.logo, LOGO_FALLBACK);
   const hero = att(settings.hero_image, HERO_FALLBACK);
+  const aboutBrands = ((data && data.about) || []).filter((b) => att(b.logo));
   const copy = (data && data.copy) || [];
   const tagText = copyVal(copy, 'tagline', 'NODE X GENERATION');
 
@@ -745,19 +746,14 @@ export default function App() {
             <span className="eyebrow b">06 — THE CONCEPT</span>
             <h2>ABOUT</h2>
             {copyVal(copy, 'about_body') && <p style={{ maxWidth: 620, textTransform: 'none', lineHeight: 1.7, color: 'var(--ink)', whiteSpace: 'pre-wrap' }}>{copyVal(copy, 'about_body')}</p>}
-            {(att(settings.brub_logo) || att(settings.hypersync_logo)) && (
+            {aboutBrands.length > 0 && (
               <div className="about-brands">
                 <div className="ab-logos">
-                  {att(settings.brub_logo) && (
-                    <a href={settings.brub_url || '#'} target="_blank" rel="noreferrer" aria-label="BRUB AI">
-                      <img src={att(settings.brub_logo)} alt="BRUB AI" />
+                  {aboutBrands.map((b, i) => (
+                    <a key={i} href={b.url || '#'} target="_blank" rel="noreferrer" aria-label={b.name}>
+                      <img src={att(b.logo)} alt={b.name || ''} />
                     </a>
-                  )}
-                  {att(settings.hypersync_logo) && (
-                    <a href={settings.hypersync_url || '#'} target="_blank" rel="noreferrer" aria-label="HYPERSYNC">
-                      <img src={att(settings.hypersync_logo)} alt="HYPERSYNC" />
-                    </a>
-                  )}
+                  ))}
                 </div>
               </div>
             )}
