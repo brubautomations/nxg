@@ -519,6 +519,7 @@ export default function App() {
   const [activeLang, setActiveLang] = useState('EN');
   const [bioMember, setBioMember] = useState(null);
   const [openAlbum, setOpenAlbum] = useState(null);
+  const [photo, setPhoto] = useState(null);
   const [bgPool, setBgPool] = useState([]);
   const [bgUrl, setBgUrl] = useState(HERO_FALLBACK);
 
@@ -729,7 +730,7 @@ export default function App() {
             {partners.length ? (
               <Belt
                 items={partners} size="md" resetKey={partners.length}
-                onTap={(p) => { if (p.url) window.open(p.url, '_blank', 'noopener'); }}
+                onTap={(p) => setPhoto(att(p.logo))}
                 renderCard={(p) => (
                   <>
                     <div className="bc-frame bc-logo"><img className="bc-img" src={att(p.logo)} alt={p.name} draggable="false" /></div>
@@ -744,6 +745,22 @@ export default function App() {
             <span className="eyebrow b">06 — THE CONCEPT</span>
             <h2>ABOUT</h2>
             {copyVal(copy, 'about_body') && <p style={{ maxWidth: 620, textTransform: 'none', lineHeight: 1.7, color: 'var(--ink)', whiteSpace: 'pre-wrap' }}>{copyVal(copy, 'about_body')}</p>}
+            {(att(settings.brub_logo) || att(settings.hypersync_logo)) && (
+              <div className="about-brands">
+                <div className="ab-logos">
+                  {att(settings.brub_logo) && (
+                    <a href={settings.brub_url || '#'} target="_blank" rel="noreferrer" aria-label="BRUB AI">
+                      <img src={att(settings.brub_logo)} alt="BRUB AI" />
+                    </a>
+                  )}
+                  {att(settings.hypersync_logo) && (
+                    <a href={settings.hypersync_url || '#'} target="_blank" rel="noreferrer" aria-label="HYPERSYNC">
+                      <img src={att(settings.hypersync_logo)} alt="HYPERSYNC" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            )}
           </section>
 
           <PrivateContent packs={packs} />
@@ -813,6 +830,12 @@ export default function App() {
       <SpotifyPlayer tracks={pub(data && data.tracks)} show={entered} logo={logo} />
       <MemberBio m={bioMember} onClose={() => setBioMember(null)} />
       <AlbumView album={openAlbum} tracks={tracks} onClose={() => setOpenAlbum(null)} />
+      {photo && (
+        <div className="photo-ov" onClick={() => setPhoto(null)}>
+          <button className="photo-x" onClick={() => setPhoto(null)} aria-label="Close">✕</button>
+          <img src={photo} alt="" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
     </>
   );
 }
