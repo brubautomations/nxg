@@ -205,7 +205,13 @@ function Belt({ items, renderCard, onTap, size = 'md', controllerRef, onActive, 
     const move = (e) => { if (!S.current.dragging) return; const dx = e.clientX - S.current.lastX; S.current.lastX = e.clientX; S.current.tx += dx; S.current.vel = dx; S.current.moved += Math.abs(dx); };
     const up = () => { if (!S.current.dragging) return; S.current.dragging = false; window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); if (Math.abs(S.current.vel) <= 0.3) S.current.target = centerTx(activeAbs()); };
     const down = (e) => { S.current.dragging = true; S.current.lastX = e.clientX; S.current.vel = 0; S.current.moved = 0; window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); };
-    const wheel = (e) => { e.preventDefault(); S.current.tx -= (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY); S.current.vel = 0; clearTimeout(vp._wt); vp._wt = setTimeout(() => { S.current.target = centerTx(activeAbs()); }, 90); };
+    const wheel = (e) => {
+      // only steal clearly-horizontal wheel; vertical scrolling passes through to the page
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      S.current.tx -= e.deltaX; S.current.vel = 0;
+      clearTimeout(vp._wt); vp._wt = setTimeout(() => { S.current.target = centerTx(activeAbs()); }, 90);
+    };
     const key = (e) => { if (e.key === 'ArrowRight') S.current.target = centerTx(activeAbs() + 1); else if (e.key === 'ArrowLeft') S.current.target = centerTx(activeAbs() - 1); };
     const resize = () => { measure(); S.current.target = centerTx(activeAbs()); };
 
@@ -230,7 +236,7 @@ function Belt({ items, renderCard, onTap, size = 'md', controllerRef, onActive, 
   if (!N) return null;
   return (
     <>
-      <div className={'belt-vp ' + size} ref={vpRef} data-lenis-prevent>
+      <div className={'belt-vp ' + size} ref={vpRef}>
         <div className="belt-track" ref={beltRef}>
           {cells.map((c) => (
             <div className="belt-card" key={c.abs} onClick={() => S.current.tapAbs && S.current.tapAbs(c.abs)}>

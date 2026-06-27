@@ -165,7 +165,7 @@ button{font-family:inherit;}
 .about-brands{margin-top:56px; display:flex; flex-direction:column; align-items:center; gap:18px;}
 .ab-label{font-size:10px; letter-spacing:.34em; color:var(--dim);}
 .ab-logos{display:flex; align-items:center; gap:48px; flex-wrap:wrap; justify-content:center;}
-.ab-logos img{height:140px; width:auto; max-width:280px; object-fit:contain; opacity:.95; transition:.2s;}
+.ab-logos img{height:96px; width:auto; max-width:280px; object-fit:contain; opacity:.95; transition:.2s;}
 .ab-logos a:hover img{opacity:1; transform:translateY(-3px);}
 .bc-img{width:100%; height:100%; object-fit:cover; display:block; pointer-events:none;}
 .bc-bg{width:100%; height:100%; background-size:cover; background-position:center; pointer-events:none;}
