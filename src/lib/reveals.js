@@ -44,6 +44,16 @@ export function setupReveals(root) {
           scrollTrigger: { trigger: sec, start: 'top 72%' } });
       }
     });
+
+    // Stage 3 — parallax: member photos drift inside their frames at varied depths
+    scope.querySelectorAll('.memsec .mcard').forEach((card, i) => {
+      const imgs = card.querySelectorAll('.mcard-img');
+      if (!imgs.length) return;
+      gsap.set(imgs, { scale: 1.16 });
+      const depth = 8 + (i % 4) * 3;
+      gsap.fromTo(imgs, { yPercent: -depth / 2 }, { yPercent: depth / 2, ease: 'none',
+        scrollTrigger: { trigger: card, start: 'top bottom', end: 'bottom top', scrub: true } });
+    });
   }, scope);
 
   ScrollTrigger.refresh();

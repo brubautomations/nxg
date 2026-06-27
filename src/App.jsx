@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useData, usePrivate, pub, copyVal, att, atts, attRaw } from './lib/data.js';
 import { initSmoothScroll } from './lib/smoothScroll.js';
 import { setupReveals } from './lib/reveals.js';
+import { gsap } from 'gsap';
 
 /* ---- bundled fallback assets (used until Airtable is populated) ---- */
 const LOGO_FALLBACK = '/assets/logo.png';
@@ -288,14 +289,25 @@ function TrackRow({ t, n, open, onToggle }) {
 
 function AlbumView({ album, tracks, onClose }) {
   const [openTrack, setOpenTrack] = useState(null);
+  const ovRef = useRef(null), panelRef = useRef(null);
+  useEffect(() => {
+    if (!album || reduce || !panelRef.current) return;
+    gsap.fromTo(ovRef.current, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' });
+    gsap.fromTo(panelRef.current, { scale: 0.9, y: 26, opacity: 0 }, { scale: 1, y: 0, opacity: 1, duration: 0.55, ease: 'expo.out' });
+  }, [album]);
+  const doClose = () => {
+    if (reduce || !panelRef.current) { onClose(); return; }
+    gsap.to(panelRef.current, { scale: 0.93, y: 18, opacity: 0, duration: 0.3, ease: 'power3.in' });
+    gsap.to(ovRef.current, { opacity: 0, duration: 0.3, onComplete: onClose });
+  };
   if (!album) return null;
   const list = (tracks || [])
     .filter((t) => Array.isArray(t.album) && t.album.includes(album.id))
     .sort((a, b) => (a.order || 0) - (b.order || 0));
   return (
-    <div className="bio-ov" onClick={onClose}>
-      <div className="album-panel" onClick={(e) => e.stopPropagation()}>
-        <button className="bio-close" onClick={onClose} aria-label="Close">✕</button>
+    <div className="bio-ov" ref={ovRef} onClick={doClose}>
+      <div className="album-panel" ref={panelRef} onClick={(e) => e.stopPropagation()}>
+        <button className="bio-close" onClick={doClose} aria-label="Close">✕</button>
         <div className="album-head">
           <img className="album-cover" src={att(album.cover)} alt={album.title} />
           <div className="album-info">
