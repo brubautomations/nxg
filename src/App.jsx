@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useData, usePrivate, pub, copyVal, att, atts, attRaw } from './lib/data.js';
+import { initSmoothScroll } from './lib/smoothScroll.js';
 
 /* ---- bundled fallback assets (used until Airtable is populated) ---- */
 const LOGO_FALLBACK = '/assets/logo.png';
@@ -201,7 +202,7 @@ function Belt({ items, renderCard, onTap, size = 'md', controllerRef, onActive, 
   if (!N) return null;
   return (
     <>
-      <div className={'belt-vp ' + size} ref={vpRef}>
+      <div className={'belt-vp ' + size} ref={vpRef} data-lenis-prevent>
         <div className="belt-track" ref={beltRef}>
           {cells.map((c) => (
             <div className="belt-card" key={c.abs} onClick={() => S.current.tapAbs && S.current.tapAbs(c.abs)}>
@@ -543,6 +544,9 @@ export default function App() {
   }
   useEffect(() => { if (phase === 'boot') runBoot(); /* eslint-disable-next-line */ }, []);
 
+  // Stage 1 — buttery smooth scrolling (Lenis + GSAP ticker). Reduced-motion safe.
+  useEffect(() => { const cleanup = initSmoothScroll(); return cleanup; }, []);
+
   // discover landing background photos in /assets/landing (1.jpg, 2.jpg, ...)
   useEffect(() => {
     const found = []; let pending = 0, done = false; const MAX = 50;
@@ -612,7 +616,7 @@ export default function App() {
 
   /* ---- enter ---- */
   function enter() { try { localStorage.setItem('nxg_seen', Date.now()); } catch (e) {} setPhase('site'); }
-  function scrollTo(id) { setMenuOpen(false); const el = document.getElementById(id); if (el) setTimeout(() => el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' }), 200); }
+  function scrollTo(id) { setMenuOpen(false); const el = document.getElementById(id); if (!el) return; setTimeout(() => { if (window.__lenis) window.__lenis.scrollTo(el, { offset: 0 }); else el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' }); }, 200); }
   function pickLang(code) { setActiveLang(code); if (code !== 'EN') { setLangNote(true); clearTimeout(window._lt); window._lt = setTimeout(() => setLangNote(false), 1800); } }
 
   const entered = phase === 'site';

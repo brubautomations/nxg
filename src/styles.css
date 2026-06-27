@@ -1,3 +1,10 @@
+/* Lenis smooth scroll (official baseline) */
+html.lenis,html.lenis body{height:auto}
+.lenis.lenis-smooth{scroll-behavior:auto!important}
+.lenis.lenis-smooth [data-lenis-prevent]{overscroll-behavior:contain}
+.lenis.lenis-stopped{overflow:hidden}
+.lenis.lenis-smooth iframe{pointer-events:none}
+
 #root{
   --bg:#fcfcfe; --ink:#0c0e14; --dim:#8a8d99; --line:#e7e7ee;
   --pink:#ff2d8b; --blue:#2f7bff; --violet:#a78bfa;
