@@ -391,3 +391,15 @@ html{scroll-behavior:smooth;}
 .rp-label{letter-spacing:.04em;} .rp-eq{opacity:.5;}
 .rp-val{background:linear-gradient(90deg,#ff2d8b,#2f7bff); -webkit-background-clip:text; background-clip:text; color:transparent;}
 @media (max-width:560px){ .ratepill{left:12px; bottom:12px; font-size:11px; padding:8px 12px;} }
+
+/* ===== mobile tuning ===== */
+@media (max-width:560px){
+  /* compact music player so it stops eating the screen */
+  .player,.splayer{ right:10px; bottom:10px; width:auto; max-width:62vw; padding:7px 9px; gap:8px; }
+  .player .pl-art{ width:30px; height:30px; }
+  .player .pl-track{ font-size:10px; letter-spacing:.08em; }
+  .player .pl-prog{ margin-top:5px; }
+  .player .pl-btn,.player .pl-mute{ width:28px; height:28px; }
+  /* landing image: show the WHOLE photo on mobile (no crop) */
+  .void,.hero-bg{ background-size:contain; background-position:center; }
+}
