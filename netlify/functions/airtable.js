@@ -1,17 +1,21 @@
 // Server-side proxy. Holds the secret token in env vars; the browser never sees it.
 const BASE = process.env.AIRTABLE_BASE_ID || 'appmiX1Oz2OgbpuZ0';
 const TOKEN = process.env.AIRTABLE_TOKEN;
-const TABLES = ['COPY', 'MEMBERS', 'ALBUMS', 'TRACKS', 'MEDIA', 'PARTNERS', 'SOCIALS', 'SETTINGS'];
+const TABLES = ['COPY', 'MEMBERS', 'ALBUMS', 'TRACKS', 'MEDIA', 'PARTNERS', 'SOCIALS', 'ABOUT'];
 
 let cache = { at: 0, data: null };
 const TTL = 60 * 1000; // 60s in-memory cache to stay well under rate limits
 
 async function fetchTable(name) {
-  const url = `https://api.airtable.com/v0/${BASE}/${encodeURIComponent(name)}?pageSize=100`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
-  if (!res.ok) throw new Error(`${name}: ${res.status}`);
-  const json = await res.json();
-  return json.records.map((r) => ({ id: r.id, ...r.fields }));
+  try {
+    const url = `https://api.airtable.com/v0/${BASE}/${encodeURIComponent(name)}?pageSize=100`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
+    if (!res.ok) return []; // missing/renamed table never breaks the whole site
+    const json = await res.json();
+    return json.records.map((r) => ({ id: r.id, ...r.fields }));
+  } catch (e) {
+    return [];
+  }
 }
 
 function respond(code, body) {
@@ -28,7 +32,7 @@ export const handler = async () => {
   if (cache.data && now - cache.at < TTL) return respond(200, cache.data);
   try {
     const results = await Promise.all(TABLES.map(fetchTable));
-    const keys = ['copy', 'members', 'albums', 'tracks', 'media', 'partners', 'socials', 'settings'];
+    const keys = ['copy', 'members', 'albums', 'tracks', 'media', 'partners', 'socials', 'about'];
     const data = {};
     keys.forEach((k, i) => { data[k] = results[i]; });
     cache = { at: now, data };
