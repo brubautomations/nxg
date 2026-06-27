@@ -222,12 +222,12 @@ function Belt({ items, renderCard, onTap, size = 'md', controllerRef, onActive, 
 
 function Discography({ albums, tracks, onOpen }) {
   const [active, setActive] = useState(0);
+  const ctrl = useRef(null);
   const counts = React.useMemo(() => albums.map((a) =>
     (tracks || []).filter((t) => Array.isArray(t.album) && t.album.indexOf(a.id) !== -1).length), [albums, tracks]);
   if (!albums.length) {
     return (<section className="sec discsec" id="discography"><span className="eyebrow b">02 — RELEASES</span><h2>DISCOGRAPHY</h2></section>);
   }
-  const ctrl = useRef(null);
   const a = albums[active];
   return (
     <section className="sec discsec" id="discography">
