@@ -487,3 +487,11 @@ html[data-lang="ja"] .t-x{
 
 /* language buttons: show the active one in that theme's colors already
    (selector sits on the gate, which reads #root vars) */
+
+/* ===== PHASE 2 — particle canvas overlay ===== */
+.nxg-particles{
+  position:fixed; inset:0; width:100%; height:100%;
+  pointer-events:none;       /* never blocks clicks/scroll */
+  z-index:8;                 /* above page bg + site content, below nav(40)/players(45)/modals(80+) */
+}
+.tn-mark{ cursor:default; user-select:none; -webkit-user-select:none; }

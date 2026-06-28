@@ -29,6 +29,185 @@ const LANGS = [['EN', 'EN'], ['KO', '한국어'], ['JA', '日本語'], ['ZH', '�
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 
+/* ===========================================================
+   PHASE 2 — falling cultural particles (sparse, slow, premium)
+   Reads the active language; draws the matching object on a
+   lightweight canvas. Mobile-capped + reduced-motion safe.
+   ES has a hidden paella easter egg (tap NXG wordmark x5).
+   =========================================================== */
+const PARTICLE_THEME = {
+  EN:  { kind: 'dot',        colors: ['#ffffff'],                       count: 16, sizeMin: 1.5, sizeMax: 3,  fall: 0.35, sway: 0.4, spin: 0 },
+  JA:  { kind: 'sakura',     colors: ['#ffd6e6', '#ffb3d1', '#ff9ec2'], count: 18, sizeMin: 8,   sizeMax: 14, fall: 0.55, sway: 1.1, spin: 0.9 },
+  KO:  { kind: 'leaf',       colors: ['#e8a13c', '#d2691e', '#c0392b'], count: 16, sizeMin: 9,   sizeMax: 15, fall: 0.6,  sway: 1.3, spin: 1.4 },
+  ZH:  { kind: 'coin',       colors: ['#f5c518', '#ffd700', '#e0a800'], count: 14, sizeMin: 9,   sizeMax: 14, fall: 0.7,  sway: 0.5, spin: 1.8 },
+  FIL: { kind: 'sampaguita', colors: ['#ffffff', '#fff8e7', '#fcd116'], count: 16, sizeMin: 8,   sizeMax: 13, fall: 0.5,  sway: 1.0, spin: 0.7 },
+  ES:  { kind: 'rose',       colors: ['#c60b1e', '#a00718', '#ffc400'], count: 16, sizeMin: 8,   sizeMax: 14, fall: 0.6,  sway: 1.2, spin: 1.1 },
+};
+
+function drawObject(ctx, p) {
+  const s = p.size;
+  ctx.save();
+  ctx.translate(p.x, p.y);
+  ctx.rotate(p.rot);
+  ctx.globalAlpha = p.alpha;
+  ctx.fillStyle = p.color;
+  switch (p.kind) {
+    case 'dot':
+      ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
+      break;
+    case 'sakura': {
+      // five soft petals
+      for (let i = 0; i < 5; i++) {
+        ctx.rotate((Math.PI * 2) / 5);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(s * 0.5, -s * 0.5, 0, -s);
+        ctx.quadraticCurveTo(-s * 0.5, -s * 0.5, 0, 0);
+        ctx.fill();
+      }
+      break;
+    }
+    case 'leaf': {
+      // simple maple-ish leaf body
+      ctx.beginPath();
+      ctx.moveTo(0, -s);
+      ctx.quadraticCurveTo(s * 0.8, -s * 0.2, s * 0.4, s * 0.6);
+      ctx.quadraticCurveTo(0, s * 0.3, -s * 0.4, s * 0.6);
+      ctx.quadraticCurveTo(-s * 0.8, -s * 0.2, 0, -s);
+      ctx.fill();
+      // stem
+      ctx.strokeStyle = p.color; ctx.lineWidth = Math.max(1, s * 0.08);
+      ctx.beginPath(); ctx.moveTo(0, s * 0.6); ctx.lineTo(0, s); ctx.stroke();
+      break;
+    }
+    case 'coin': {
+      // gold disc with a square hole (Chinese cash coin)
+      ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = p.alpha * 0.9;
+      ctx.fillStyle = 'rgba(120,80,0,0.55)';
+      const h = s * 0.32;
+      ctx.fillRect(-h / 2, -h / 2, h, h);
+      // rim shine
+      ctx.globalAlpha = p.alpha;
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = Math.max(1, s * 0.07);
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.92, -0.6, 0.8); ctx.stroke();
+      break;
+    }
+    case 'sampaguita': {
+      // five rounded white petals + tiny gold center
+      for (let i = 0; i < 5; i++) {
+        ctx.rotate((Math.PI * 2) / 5);
+        ctx.beginPath();
+        ctx.ellipse(0, -s * 0.55, s * 0.32, s * 0.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#fcd116';
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.22, 0, Math.PI * 2); ctx.fill();
+      break;
+    }
+    case 'rose': {
+      // layered curled petal
+      ctx.beginPath();
+      ctx.moveTo(0, s * 0.6);
+      ctx.bezierCurveTo(s, s * 0.2, s * 0.7, -s, 0, -s);
+      ctx.bezierCurveTo(-s * 0.7, -s, -s, s * 0.2, 0, s * 0.6);
+      ctx.fill();
+      ctx.globalAlpha = p.alpha * 0.5;
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.beginPath();
+      ctx.moveTo(0, s * 0.3);
+      ctx.bezierCurveTo(s * 0.5, 0, s * 0.4, -s * 0.5, 0, -s * 0.6);
+      ctx.bezierCurveTo(-s * 0.4, -s * 0.5, -s * 0.5, 0, 0, s * 0.3);
+      ctx.fill();
+      break;
+    }
+    default:
+      ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function Particles({ lang, paella }) {
+  const canvasRef = useRef(null);
+  const rafRef = useRef(0);
+  const partsRef = useRef([]);
+  useEffect(() => {
+    if (reduce) return;                       // respect reduced-motion: no particles
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let W = 0, H = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const isMobile = window.innerWidth < 720;
+
+    const theme = paella
+      ? { kind: 'paella', colors: ['#000'], count: isMobile ? 8 : 14, sizeMin: 22, sizeMax: 38, fall: 0.8, sway: 1.4, spin: 1.2 }
+      : (PARTICLE_THEME[lang] || PARTICLE_THEME.EN);
+
+    const count = isMobile ? Math.ceil(theme.count * 0.55) : theme.count;
+
+    const resize = () => {
+      W = canvas.clientWidth; H = canvas.clientHeight;
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    const make = (initial) => ({
+      kind: theme.kind,
+      x: rnd(0, W),
+      y: initial ? rnd(0, H) : rnd(-60, -10),
+      size: rnd(theme.sizeMin, theme.sizeMax),
+      color: theme.colors[Math.floor(Math.random() * theme.colors.length)],
+      alpha: rnd(0.45, 0.9),
+      rot: rnd(0, Math.PI * 2),
+      vrot: rnd(-theme.spin, theme.spin) * 0.02,
+      vy: rnd(theme.fall * 0.6, theme.fall * 1.4),
+      swayAmp: rnd(0.3, 1) * theme.sway,
+      swayPhase: rnd(0, Math.PI * 2),
+      swaySpd: rnd(0.005, 0.015),
+    });
+    partsRef.current = Array.from({ length: count }, () => make(true));
+
+    const paellaImg = '🥘';
+    const tick = () => {
+      ctx.clearRect(0, 0, W, H);
+      const ps = partsRef.current;
+      for (let i = 0; i < ps.length; i++) {
+        const p = ps[i];
+        p.y += p.vy;
+        p.swayPhase += p.swaySpd;
+        p.x += Math.sin(p.swayPhase) * p.swayAmp * 0.6;
+        p.rot += p.vrot;
+        if (p.y - p.size > H) Object.assign(p, make(false));
+        if (p.kind === 'paella') {
+          ctx.save();
+          ctx.globalAlpha = p.alpha;
+          ctx.font = `${p.size}px serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+          ctx.fillText(paellaImg, 0, 0);
+          ctx.restore();
+        } else {
+          drawObject(ctx, p);
+        }
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(rafRef.current);
+      window.removeEventListener('resize', resize);
+    };
+  }, [lang, paella]);
+
+  if (reduce) return null;
+  return <canvas ref={canvasRef} className="nxg-particles" aria-hidden="true" />;
+}
+
+
 // hover slideshow uses every image attached in the member's `photo` cell (multi-attachment)
 function memberImages(m) {
   const arr = atts(m.photo);
@@ -525,6 +704,8 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [langNote, setLangNote] = useState(false);
   const [activeLang, setActiveLang] = useState('EN');
+  const [paella, setPaella] = useState(false);
+  const paellaTaps = useRef({ n: 0, t: 0 });
   const [bioMember, setBioMember] = useState(null);
   const [openAlbum, setOpenAlbum] = useState(null);
   const [photo, setPhoto] = useState(null);
@@ -682,6 +863,8 @@ export default function App() {
   function pickLang(code) {
     setActiveLang(code);
     setLang(code);                              // tell the data layer which column to read
+    if (code !== 'ES') setPaella(false);        // easter egg only lives on ES
+    paellaTaps.current = { n: 0, t: 0 };
     try {
       const c = code.toLowerCase();
       document.documentElement.setAttribute('lang', c === 'fil' ? 'fil' : c);
@@ -689,10 +872,22 @@ export default function App() {
     } catch (e) {}
   }
 
+  // hidden easter egg: tap the NXG wordmark 5x quickly while on Español → raining paella
+  function wordmarkTap() {
+    const now = Date.now();
+    const s = paellaTaps.current;
+    s.n = (now - s.t < 800) ? s.n + 1 : 1;
+    s.t = now;
+    if (s.n >= 5 && activeLang === 'ES') { setPaella((v) => !v); s.n = 0; }
+  }
+
   const entered = phase === 'site';
 
   return (
     <>
+      {/* ===== FALLING CULTURAL PARTICLES (Phase 2) — site only, clean reveal after ENTER ===== */}
+      {entered && <Particles lang={activeLang} paella={paella} />}
+
       {/* ===== SITE ===== */}
       {entered && (
         <main className="site">
@@ -782,7 +977,7 @@ export default function App() {
 
       {/* ===== TOP BAR ===== */}
       <header className={'topnav' + (entered ? ' show' : '')}>
-        <span className="tn-mark">NXG</span>
+        <span className="tn-mark" onClick={wordmarkTap}>NXG</span>
         <button className="burger" aria-label="Open menu" onClick={() => setMenuOpen(true)}><i /><i /><i /></button>
       </header>
 
