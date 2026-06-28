@@ -127,6 +127,176 @@ function drawObject(ctx, p) {
   ctx.restore();
 }
 
+/* ===========================================================
+   PHASE 2 — "TALK TO NXG" voice-call feature
+   Floating button -> phone-call popup. Edition decides who
+   answers (EN = random member for the day). Reads three CMS
+   tables: talk_questions / talk_answers / talk_greetings.
+   Answered questions lock until local midnight (per browser).
+   Audio only — no captions (real call feel).
+   =========================================================== */
+const EDITION_MEMBER = { ZH: 'CHENXI', KO: 'YOORA', JA: 'HARUKA', FIL: 'SARAYA', ES: 'SARAYA' };
+const TALK_MEMBERS = ['CHENXI', 'YOORA', 'HARUKA', 'SARAYA'];
+
+// today's key (local) — used for daily reset + stable EN "member of the day"
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+};
+// deterministic pick so EN gives the same member all day, then changes at midnight
+const memberOfDay = () => {
+  const k = todayKey();
+  let h = 0;
+  for (let i = 0; i < k.length; i++) h = (h * 31 + k.charCodeAt(i)) >>> 0;
+  return TALK_MEMBERS[h % TALK_MEMBERS.length];
+};
+
+const LOCK_KEY = 'nxg_talk_lock';
+const readLocks = () => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LOCK_KEY) || '{}');
+    if (raw.day !== todayKey()) return { day: todayKey(), used: [] }; // reset at midnight
+    return raw;
+  } catch (e) { return { day: todayKey(), used: [] }; }
+};
+const writeLocks = (obj) => { try { localStorage.setItem(LOCK_KEY, JSON.stringify(obj)); } catch (e) {} };
+
+function TalkToNXG({ lang, data, members }) {
+  const [open, setOpen] = useState(false);
+  const [stage, setStage] = useState('idle');   // idle | ringing | connected
+  const [locks, setLocks] = useState(() => (typeof window !== 'undefined' ? readLocks() : { day: '', used: [] }));
+  const [lastClip, setLastClip] = useState({}); // question_key -> last audio url (avoid repeat)
+  const [playing, setPlaying] = useState(false);
+  const audioRef = useRef(null);
+  const ringTimer = useRef(null);
+
+  // which member answers in this edition
+  const memberName = (lang === 'EN' || !EDITION_MEMBER[lang]) ? memberOfDay() : EDITION_MEMBER[lang];
+
+  const questions = (data && data.talk_questions) || [];
+  const answers = (data && data.talk_answers) || [];
+  const greetings = (data && data.talk_greetings) || [];
+
+  // questions for this edition's language, published, ordered
+  const myQuestions = questions
+    .filter((q) => q.published && (q.lang === lang || (lang === 'EN' && q.lang === 'EN')))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  // this member's greeting (carries the call selfie photo)
+  const myGreet = greetings.filter((g) => g.published && g.member === memberName);
+  const selfie = myGreet.length ? att(myGreet[0].photo) : '';
+  // member color from the members table for theming the call
+  const memberObj = (members || []).find((m) => (m.name || '').toUpperCase() === memberName);
+  const accent = (memberObj && memberObj.color) || 'var(--pink)';
+
+  function startCall() {
+    setOpen(true);
+    setStage('ringing');
+    clearTimeout(ringTimer.current);
+    // 3 rings (~1.4s each) then she picks up + plays a random greeting
+    ringTimer.current = setTimeout(() => {
+      setStage('connected');
+      playRandom(myGreet, '_greeting');
+    }, 4200);
+  }
+  function endCall() {
+    clearTimeout(ringTimer.current);
+    if (audioRef.current) { audioRef.current.pause(); }
+    setPlaying(false);
+    setStage('idle');
+    setOpen(false);
+  }
+
+  function playRandom(pool, qkey) {
+    const usable = pool.map((r) => att(r.audio)).filter(Boolean);
+    if (!usable.length) return;
+    // avoid repeating the last clip for this question
+    let choices = usable;
+    if (usable.length > 1 && lastClip[qkey]) choices = usable.filter((u) => u !== lastClip[qkey]);
+    const url = choices[Math.floor(Math.random() * choices.length)];
+    setLastClip((m) => ({ ...m, [qkey]: url }));
+    if (audioRef.current) {
+      audioRef.current.src = url;
+      setPlaying(true);
+      audioRef.current.play().catch(() => setPlaying(false));
+    }
+  }
+
+  function askQuestion(q) {
+    if (locks.used.includes(q.key)) return;             // already used today
+    const pool = answers.filter((a) => a.published && a.question_key === q.key && a.member === memberName);
+    playRandom(pool, q.key);
+    const next = { day: todayKey(), used: [...locks.used, q.key] };
+    setLocks(next); writeLocks(next);
+  }
+
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    const onEnd = () => setPlaying(false);
+    a.addEventListener('ended', onEnd);
+    return () => a.removeEventListener('ended', onEnd);
+  }, []);
+
+  // close call if language (edition) changes mid-call
+  useEffect(() => { if (open) endCall(); /* eslint-disable-next-line */ }, [lang]);
+
+  const label = copyVal((data && data.copy) || [], 'talk_cta', 'TALK TO NXG');
+
+  return (
+    <>
+      <button className="talk-fab" onClick={startCall} aria-label="Talk to NXG">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.81.36 1.6.7 2.34a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.74-1.27a2 2 0 0 1 2.11-.45c.74.34 1.53.57 2.34.7A2 2 0 0 1 22 16.92z" /></svg>
+        <span className="talk-fab-txt">{label}</span>
+      </button>
+
+      {open && createPortal(
+        <div className="callwrap" onClick={endCall}>
+          <div className="callphone" onClick={(e) => e.stopPropagation()} style={{ '--accent': accent }}>
+            <div className="call-photo" style={selfie ? { backgroundImage: `url(${selfie})` } : {}}>
+              {!selfie && <div className="call-photo-fallback">{memberName}</div>}
+              <div className="call-grad" />
+            </div>
+
+            {stage === 'ringing' && (
+              <div className="call-ringing">
+                <div className="ring-rings"><i /><i /><i /></div>
+                <div className="call-name">{memberName}</div>
+                <div className="call-status">calling<span className="dots"><i>.</i><i>.</i><i>.</i></span></div>
+              </div>
+            )}
+
+            {stage === 'connected' && (
+              <div className="call-live">
+                <div className="call-top">
+                  <div className="call-name sm">{memberName}</div>
+                  <div className={'call-eq' + (playing ? ' on' : '')}><i /><i /><i /><i /></div>
+                </div>
+                <div className="call-q-list">
+                  {myQuestions.length === 0 && <div className="call-empty">No questions yet.</div>}
+                  {myQuestions.map((q) => {
+                    const used = locks.used.includes(q.key);
+                    return (
+                      <button key={q.key} className={'call-q' + (used ? ' used' : '')} disabled={used} onClick={() => askQuestion(q)}>
+                        {q.question}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button className="call-end" onClick={endCall}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.7l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.1-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.51-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z" /></svg>
+                </button>
+              </div>
+            )}
+          </div>
+          <audio ref={audioRef} />
+        </div>,
+        document.body
+      )}
+    </>
+  );
+}
+
 function Particles({ lang, paella }) {
   const canvasRef = useRef(null);
   const rafRef = useRef(0);
@@ -887,6 +1057,9 @@ export default function App() {
     <>
       {/* ===== FALLING CULTURAL PARTICLES (Phase 2) — site only, clean reveal after ENTER ===== */}
       {entered && <Particles lang={activeLang} paella={paella} />}
+
+      {/* ===== TALK TO NXG (Phase 2) ===== */}
+      {entered && <TalkToNXG lang={activeLang} data={data} members={members} />}
 
       {/* ===== SITE ===== */}
       {entered && (

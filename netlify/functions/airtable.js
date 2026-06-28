@@ -1,7 +1,7 @@
 // Server-side proxy. Holds the secret token in env vars; the browser never sees it.
 const BASE = process.env.AIRTABLE_BASE_ID || 'appmiX1Oz2OgbpuZ0';
 const TOKEN = process.env.AIRTABLE_TOKEN;
-const TABLES = ['COPY', 'MEMBERS', 'ALBUMS', 'TRACKS', 'MEDIA', 'PARTNERS', 'SOCIALS', 'ABOUT'];
+const TABLES = ['COPY', 'MEMBERS', 'ALBUMS', 'TRACKS', 'MEDIA', 'PARTNERS', 'SOCIALS', 'ABOUT', 'TALK_QUESTIONS', 'TALK_ANSWERS', 'TALK_GREETINGS'];
 
 let cache = { at: 0, data: null };
 const TTL = 60 * 1000; // 60s in-memory cache to stay well under rate limits
@@ -32,7 +32,7 @@ export const handler = async () => {
   if (cache.data && now - cache.at < TTL) return respond(200, cache.data);
   try {
     const results = await Promise.all(TABLES.map(fetchTable));
-    const keys = ['copy', 'members', 'albums', 'tracks', 'media', 'partners', 'socials', 'about'];
+    const keys = ['copy', 'members', 'albums', 'tracks', 'media', 'partners', 'socials', 'about', 'talk_questions', 'talk_answers', 'talk_greetings'];
     const data = {};
     keys.forEach((k, i) => { data[k] = results[i]; });
     cache = { at: now, data };

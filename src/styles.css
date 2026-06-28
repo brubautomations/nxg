@@ -495,3 +495,103 @@ html[data-lang="ja"] .t-x{
   z-index:8;                 /* above page bg + site content, below nav(40)/players(45)/modals(80+) */
 }
 .tn-mark{ cursor:default; user-select:none; -webkit-user-select:none; }
+
+/* ===== PHASE 2 — TALK TO NXG (floating button + phone call) ===== */
+.talk-fab{
+  position:fixed; top:18px; right:74px; z-index:60;   /* left of the burger */
+  display:flex; align-items:center; gap:8px;
+  height:40px; padding:0 14px;
+  background:var(--ink); color:#fff; border:none; border-radius:999px;
+  font-family:var(--mono); font-size:11px; letter-spacing:.12em; font-weight:600;
+  cursor:pointer; box-shadow:0 4px 18px rgba(0,0,0,.22);
+  transition:transform .2s ease, background .2s ease;
+}
+.talk-fab:hover{ transform:translateY(-1px); background:var(--pink); }
+.talk-fab svg{ flex:0 0 auto; }
+.talk-fab-txt{ white-space:nowrap; }
+
+/* call overlay */
+.callwrap{
+  position:fixed; inset:0; z-index:90;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(8,8,14,.62); backdrop-filter:blur(8px);
+  animation:callfade .25s ease;
+}
+@keyframes callfade{ from{opacity:0} to{opacity:1} }
+
+.callphone{
+  position:relative; width:min(340px,86vw); height:min(620px,82vh);
+  border-radius:34px; overflow:hidden;
+  background:#0b0c12; color:#fff;
+  box-shadow:0 30px 80px rgba(0,0,0,.5), 0 0 0 8px rgba(255,255,255,.04);
+  animation:callpop .35s cubic-bezier(.2,.9,.25,1);
+}
+@keyframes callpop{ from{opacity:0; transform:translateY(18px) scale(.96)} to{opacity:1; transform:none} }
+
+.call-photo{
+  position:absolute; inset:0; background-size:cover; background-position:center top;
+  background-color:#15161f;
+}
+.call-photo-fallback{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); letter-spacing:.2em; font-size:20px; color:rgba(255,255,255,.4);
+}
+.call-grad{ position:absolute; inset:0; background:linear-gradient(180deg, rgba(8,8,14,.15) 0%, rgba(8,8,14,.05) 40%, rgba(8,8,14,.85) 100%); }
+
+/* ringing state */
+.call-ringing{
+  position:absolute; inset:0; z-index:2;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+  padding-bottom:64px; text-align:center;
+}
+.ring-rings{ position:absolute; top:46%; left:50%; transform:translate(-50%,-50%); width:120px; height:120px; }
+.ring-rings i{
+  position:absolute; inset:0; margin:auto; width:120px; height:120px; border-radius:50%;
+  border:2px solid var(--accent,#ff2d8b); opacity:0; transform:scale(.4);
+  animation:ringpulse 1.4s ease-out infinite;
+}
+.ring-rings i:nth-child(2){ animation-delay:.46s; }
+.ring-rings i:nth-child(3){ animation-delay:.92s; }
+@keyframes ringpulse{ 0%{opacity:.7; transform:scale(.4)} 70%{opacity:0; transform:scale(1.3)} 100%{opacity:0} }
+.call-name{ font-family:var(--mono); font-size:24px; font-weight:700; letter-spacing:.06em; }
+.call-name.sm{ font-size:15px; }
+.call-status{ margin-top:6px; font-family:var(--mono); font-size:12px; color:rgba(255,255,255,.7); letter-spacing:.15em; }
+.call-status .dots i{ animation:dotblink 1.2s infinite; }
+.call-status .dots i:nth-child(2){ animation-delay:.2s; }
+.call-status .dots i:nth-child(3){ animation-delay:.4s; }
+@keyframes dotblink{ 0%,100%{opacity:.2} 50%{opacity:1} }
+
+/* connected state */
+.call-live{ position:absolute; inset:0; z-index:2; display:flex; flex-direction:column; justify-content:flex-end; padding:18px 16px 20px; }
+.call-top{ position:absolute; top:18px; left:0; right:0; display:flex; flex-direction:column; align-items:center; gap:10px; }
+.call-eq{ display:flex; align-items:flex-end; gap:3px; height:16px; opacity:.4; }
+.call-eq i{ width:3px; height:6px; background:var(--accent,#ff2d8b); border-radius:2px; }
+.call-eq.on i{ animation:eq .7s ease-in-out infinite; }
+.call-eq.on i:nth-child(2){ animation-delay:.15s } .call-eq.on i:nth-child(3){ animation-delay:.3s } .call-eq.on i:nth-child(4){ animation-delay:.45s }
+@keyframes eq{ 0%,100%{height:5px} 50%{height:16px} }
+
+.call-q-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:14px; max-height:46%; overflow-y:auto; }
+.call-q{
+  width:100%; text-align:left; padding:12px 14px;
+  background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18);
+  color:#fff; border-radius:14px; font-family:var(--mono); font-size:13px; line-height:1.3;
+  cursor:pointer; backdrop-filter:blur(4px); transition:background .15s ease, transform .15s ease;
+}
+.call-q:hover{ background:var(--accent,#ff2d8b); transform:translateX(2px); }
+.call-q.used{ opacity:.32; cursor:not-allowed; text-decoration:line-through; }
+.call-q.used:hover{ background:rgba(255,255,255,.12); transform:none; }
+.call-empty{ text-align:center; font-family:var(--mono); font-size:12px; color:rgba(255,255,255,.5); padding:20px; }
+
+.call-end{
+  align-self:center; width:58px; height:58px; border-radius:50%;
+  background:#e5484d; color:#fff; border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 6px 20px rgba(229,72,77,.5); transition:transform .15s ease;
+}
+.call-end:hover{ transform:scale(1.06); }
+
+/* mobile: collapse the FAB to icon-only so it doesn't crowd the burger */
+@media (max-width:560px){
+  .talk-fab{ right:66px; padding:0; width:40px; justify-content:center; }
+  .talk-fab-txt{ display:none; }
+}
