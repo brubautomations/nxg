@@ -182,9 +182,11 @@ function TalkToNXG({ lang, data, members }) {
     .filter((q) => q.published && (q.lang === lang || (lang === 'EN' && q.lang === 'EN')))
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 
-  // this member's greeting (carries the call selfie photo)
-  const myGreet = greetings.filter((g) => g.published && g.member === memberName);
-  const selfie = myGreet.length ? att(myGreet[0].photo) : '';
+  // this member's greeting for THIS edition's language (carries the call selfie photo)
+  const myGreet = greetings.filter((g) => g.published && g.member === memberName && g.lang === lang);
+  // fallback: if no greeting in this exact language, use any published greeting for the member
+  const greetPool = myGreet.length ? myGreet : greetings.filter((g) => g.published && g.member === memberName);
+  const selfie = greetPool.length ? att(greetPool[0].photo) : '';
   // member color from the members table for theming the call
   const memberObj = (members || []).find((m) => (m.name || '').toUpperCase() === memberName);
   const accent = (memberObj && memberObj.color) || 'var(--pink)';
@@ -196,7 +198,7 @@ function TalkToNXG({ lang, data, members }) {
     // 3 rings (~1.4s each) then she picks up + plays a random greeting
     ringTimer.current = setTimeout(() => {
       setStage('connected');
-      playRandom(myGreet, '_greeting');
+      playRandom(greetPool, '_greeting');
     }, 4200);
   }
   function endCall() {
