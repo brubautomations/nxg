@@ -65,9 +65,10 @@ button{font-family:inherit;}
 .tagline{font-size:clamp(11px,2.6vw,14px); letter-spacing:clamp(.18em,1.2vw,.4em); text-transform:uppercase; font-weight:700; display:flex; gap:.6em;}
 .langs{display:flex; gap:6px; flex-wrap:wrap; justify-content:center;}
 .lang{font-family:var(--mono); font-size:11px; letter-spacing:.12em; padding:6px 12px; border-radius:999px; cursor:pointer;
-  background:transparent; border:1px solid var(--line); color:var(--dim); transition:.2s;}
-.lang.on{background:linear-gradient(135deg,var(--pink),var(--blue)); color:#fff; border-color:transparent; box-shadow:0 4px 14px rgba(255,45,139,.25);}
-.lang.soon{opacity:.55;} .lang.soon:hover{opacity:1; border-color:var(--pink); color:var(--pink);}
+  background:rgba(255,255,255,.82); border:1px solid rgba(255,255,255,.9); color:#14151c; font-weight:600;
+  backdrop-filter:blur(6px); box-shadow:0 2px 10px rgba(0,0,0,.18); transition:.2s;}
+.lang:hover{background:#fff; transform:translateY(-1px);}
+.lang.on{background:linear-gradient(135deg,var(--pink),var(--blue)); color:#fff; border-color:transparent; box-shadow:0 4px 14px rgba(0,0,0,.28);}
 .lang:focus-visible{outline:2px solid var(--blue); outline-offset:2px;}
 .langnote{font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--pink); height:12px; opacity:0; transition:opacity .3s;}
 .langnote.show{opacity:1;}
