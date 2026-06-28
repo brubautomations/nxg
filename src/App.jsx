@@ -228,34 +228,27 @@ function TalkToNXG({ lang, data, members }) {
     ringAudioRef.current = null;
   }
 
-  // ---- "pick up" click: the line-connecting clunk before she speaks ----
+  // ---- "pick up" click: the line-connecting click before she speaks ----
   function pickupClick() {
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       const ctx = new AC();
       const t = ctx.currentTime;
-      // short low thunk (handset lifting) + tiny noise tick = "connected" feel
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = 'triangle';
-      o.frequency.setValueAtTime(180, t);
-      o.frequency.exponentialRampToValueAtTime(90, t + 0.08);
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.25, t + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-      o.connect(g); g.connect(ctx.destination);
-      o.start(t); o.stop(t + 0.14);
-      // tiny high tick on top for the "click"
-      const o2 = ctx.createOscillator();
-      const g2 = ctx.createGain();
-      o2.type = 'square';
-      o2.frequency.value = 1200;
-      g2.gain.setValueAtTime(0.0001, t);
-      g2.gain.exponentialRampToValueAtTime(0.08, t + 0.005);
-      g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
-      o2.connect(g2); g2.connect(ctx.destination);
-      o2.start(t); o2.stop(t + 0.05);
+      // a connect = two very short bright clicks (relay/contacts meeting), no bass thud
+      const click = (at, freq, vol) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'square';
+        o.frequency.value = freq;
+        g.gain.setValueAtTime(0.0001, t + at);
+        g.gain.exponentialRampToValueAtTime(vol, t + at + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + at + 0.025);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t + at); o.stop(t + at + 0.03);
+      };
+      click(0, 2000, 0.09);      // first contact
+      click(0.06, 1400, 0.07);   // second, slightly lower — the "cl-ick"
       setTimeout(() => { try { ctx.close(); } catch (e) {} }, 300);
     } catch (e) {}
   }
