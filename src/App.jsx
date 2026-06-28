@@ -169,6 +169,7 @@ function TalkToNXG({ lang, data, members }) {
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef(null);
   const ringTimer = useRef(null);
+  const ringAudioRef = useRef(null);   // synthesized ringtone (Web Audio)
 
   // which member answers in this edition
   const memberName = (lang === 'EN' || !EDITION_MEMBER[lang]) ? memberOfDay() : EDITION_MEMBER[lang];
@@ -191,18 +192,57 @@ function TalkToNXG({ lang, data, members }) {
   const memberObj = (members || []).find((m) => (m.name || '').toUpperCase() === memberName);
   const accent = (memberObj && memberObj.color) || 'var(--pink)';
 
+  // ---- synthesized phone ringtone (no file needed) ----
+  function startRing() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      ringAudioRef.current = { ctx, timers: [] };
+      // one "ring" = two short warble tones; repeat with a gap, like a phone
+      const ringOnce = (startAt) => {
+        [0, 0.4].forEach((off) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = 'sine';
+          o.frequency.value = 440;          // classic ring pitch
+          const t = ctx.currentTime + startAt + off;
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(0.15, t + 0.02);
+          g.gain.setValueAtTime(0.15, t + 0.33);
+          g.gain.linearRampToValueAtTime(0, t + 0.35);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(t); o.stop(t + 0.36);
+        });
+      };
+      // three rings across the ~4.2s window (ring, pause, ring, pause, ring)
+      [0, 1.4, 2.8].forEach((s) => ringOnce(s));
+    } catch (e) {}
+  }
+  function stopRing() {
+    try {
+      if (ringAudioRef.current && ringAudioRef.current.ctx) {
+        ringAudioRef.current.ctx.close();
+      }
+    } catch (e) {}
+    ringAudioRef.current = null;
+  }
+
   function startCall() {
     setOpen(true);
     setStage('ringing');
     clearTimeout(ringTimer.current);
+    startRing();                              // play the ring sound
     // 3 rings (~1.4s each) then she picks up + plays a random greeting
     ringTimer.current = setTimeout(() => {
+      stopRing();
       setStage('connected');
       playRandom(greetPool, '_greeting');
     }, 4200);
   }
   function endCall() {
     clearTimeout(ringTimer.current);
+    stopRing();
     if (audioRef.current) { audioRef.current.pause(); }
     setPlaying(false);
     setStage('idle');
