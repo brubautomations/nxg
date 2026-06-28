@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useData, usePrivate, pub, copyVal, att, atts, attRaw } from './lib/data.js';
+import { useData, usePrivate, pub, copyVal, att, atts, attRaw, setLang } from './lib/data.js';
 import { initSmoothScroll } from './lib/smoothScroll.js';
 import { setupReveals } from './lib/reveals.js';
 import { gsap } from 'gsap';
@@ -25,7 +25,7 @@ const MEMBER_FALLBACK = {
   SARAYA: { name: 'SARAYA', color: '#7c4dff', photo: '/assets/members/saraya.png', order: 4 },
 };
 const BOOTLINES = ['initializing nxg.exe', 'mounting persona core', 'rendering visual model', 'syncing vocal engine', 'calibrating aura', 'member online'];
-const LANGS = [['EN', 'EN'], ['KO', '한국어'], ['JA', '日本語'], ['ZH', '中文'], ['FIL', 'Filipino']];
+const LANGS = [['EN', 'EN'], ['KO', '한국어'], ['JA', '日本語'], ['ZH', '中文'], ['FIL', 'Filipino'], ['ES', 'Español']];
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 
@@ -62,7 +62,7 @@ function SocialIcon({ platform }) {
   );
 }
 
-function MemberCard({ m, onOpen }) {
+function MemberCard({ m, onOpen, copy }) {
   const imgs = React.useMemo(() => memberImages(m), [m]);
   const [idx, setIdx] = useState(0);
   const timer = useRef(null);
@@ -77,13 +77,13 @@ function MemberCard({ m, onOpen }) {
       ))}
       <div className="mcard-foot">
         <span className="mcard-name">{m.name}</span>
-        <span className="mcard-cta">VIEW BIO →</span>
+        <span className="mcard-cta">{copyVal(copy, 'card_view_bio', 'VIEW BIO →')}</span>
       </div>
     </div>
   );
 }
 
-function MemberBio({ m, onClose }) {
+function MemberBio({ m, onClose, copy }) {
   if (!m) return null;
   const img = memberImages(m)[0];
   return (
@@ -92,11 +92,11 @@ function MemberBio({ m, onClose }) {
         <button className="bio-close" onClick={onClose} aria-label="Close">✕</button>
         <div className="bio-img" style={{ backgroundImage: `url(${img})` }} />
         <div className="bio-txt">
-          <span className="bio-eyebrow" style={{ color: m.color || '#ff2d8b' }}>NXG // MEMBER</span>
+          <span className="bio-eyebrow" style={{ color: m.color || '#ff2d8b' }}>{copyVal(copy, 'bio_eyebrow', 'NXG // MEMBER')}</span>
           <h2>{m.name}</h2>
           {m.tagline && <p className="bio-tag">“{m.tagline}”</p>}
-          <h3>BACKGROUND</h3>
-          <p className="bio-body">{m.bio || 'Bio coming soon — add it in the MEMBERS table.'}</p>
+          <h3>{copyVal(copy, 'bio_background', 'BACKGROUND')}</h3>
+          <p className="bio-body">{m.bio || copyVal(copy, 'bio_empty', 'Bio coming soon.')}</p>
         </div>
       </div>
     </div>
@@ -115,7 +115,7 @@ function spotifyEmbed(url) {
   return `https://open.spotify.com/embed/${m[1]}/${m[2]}?theme=0`;
 }
 
-function SpotifyPlayer({ tracks, show, logo }) {
+function SpotifyPlayer({ tracks, show, logo, nowLabel }) {
   const pool = React.useMemo(() => {
     const urls = (tracks || []).map((t) => t.spotify_url).filter(Boolean);
     return urls.length ? urls : (FALLBACK_SPOTIFY ? [FALLBACK_SPOTIFY] : []);
@@ -138,7 +138,7 @@ function SpotifyPlayer({ tracks, show, logo }) {
     <div className={'splayer' + (show ? ' show' : '') + (min ? ' min' : '')} onClick={() => { if (min) setMin(false); }}>
       <div className="sp-top">
         <img className="sp-logo" src={logo} alt="NXG" />
-        <span className="sp-now">NOW PLAYING</span>
+        <span className="sp-now">{nowLabel || 'NOW PLAYING'}</span>
         {pool.length > 1 && <button className="sp-next" onClick={(e) => { e.stopPropagation(); shuffle(); }} aria-label="Shuffle">⤿</button>}
         <button className="sp-min" onClick={(e) => { e.stopPropagation(); setMin((m) => !m); }} aria-label={min ? 'Expand player' : 'Minimize player'} title={min ? 'Expand' : 'Minimize'}>{min ? '▢' : '—'}</button>
       </div>
@@ -257,19 +257,19 @@ function Belt({ items, renderCard, onTap, size = 'md', controllerRef, onActive, 
   );
 }
 
-function Discography({ albums, tracks, onOpen }) {
+function Discography({ albums, tracks, onOpen, copy }) {
   const [active, setActive] = useState(0);
   const ctrl = useRef(null);
   const counts = React.useMemo(() => albums.map((a) =>
     (tracks || []).filter((t) => Array.isArray(t.album) && t.album.indexOf(a.id) !== -1).length), [albums, tracks]);
   if (!albums.length) {
-    return (<section className="sec discsec" id="discography"><span className="eyebrow b">02 — RELEASES</span><h2>DISCOGRAPHY</h2></section>);
+    return (<section className="sec discsec" id="discography"><span className="eyebrow b">{copyVal(copy, 'eyebrow_discography', '02 — RELEASES')}</span><h2>{copyVal(copy, 'head_discography', 'DISCOGRAPHY')}</h2></section>);
   }
   const a = albums[active];
   return (
     <section className="sec discsec" id="discography">
-      <span className="eyebrow b">02 — RELEASES</span>
-      <h2>DISCOGRAPHY</h2>
+      <span className="eyebrow b">{copyVal(copy, 'eyebrow_discography', '02 — RELEASES')}</span>
+      <h2>{copyVal(copy, 'head_discography', 'DISCOGRAPHY')}</h2>
       <Belt
         items={albums} size="md" arrows={false} resetKey={albums.length}
         controllerRef={ctrl} onActive={setActive} onTap={(al) => onOpen(al)}
@@ -281,8 +281,8 @@ function Discography({ albums, tracks, onOpen }) {
         {albums.length > 1 && <button className="disc-arrow" onClick={() => ctrl.current && ctrl.current.nav(-1)} aria-label="Previous album">‹</button>}
         <div className="disc-read-mid" onClick={() => onOpen(a)}>
           <div className="disc-title">{a.title}</div>
-          <div className="disc-date">{[a.release_date, counts[active] ? `${counts[active]} TRACKS` : ''].filter(Boolean).join(' · ')}</div>
-          <span className="disc-view">VIEW ALBUM →</span>
+          <div className="disc-date">{[a.release_date, counts[active] ? `${counts[active]} ${copyVal(copy, 'disc_tracks', 'TRACKS')}` : ''].filter(Boolean).join(' · ')}</div>
+          <span className="disc-view">{copyVal(copy, 'disc_view_album', 'VIEW ALBUM →')}</span>
         </div>
         {albums.length > 1 && <button className="disc-arrow" onClick={() => ctrl.current && ctrl.current.nav(1)} aria-label="Next album">›</button>}
       </div>
@@ -290,7 +290,7 @@ function Discography({ albums, tracks, onOpen }) {
   );
 }
 
-function TrackRow({ t, n, open, onToggle }) {
+function TrackRow({ t, n, open, onToggle, copy }) {
   const embed = spotifyEmbed(t.spotify_url);
   const canvas = attRaw(t.canvas)[0];
   const isVideo = canvas && (canvas.type || '').startsWith('video');
@@ -313,15 +313,15 @@ function TrackRow({ t, n, open, onToggle }) {
             <iframe className="trk-spotify" title={t.title} src={embed} width="100%" height="80" frameBorder="0"
               allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" />
           )}
-          {t.story && (<><h4>STORY</h4><p className="trk-story">{t.story}</p></>)}
-          {t.lyrics && (<><h4>LYRICS{t.lyricist ? ` — ${t.lyricist}` : ''}</h4><pre className="trk-lyrics">{t.lyrics}</pre></>)}
+          {t.story && (<><h4>{copyVal(copy, 'track_story', 'STORY')}</h4><p className="trk-story">{t.story}</p></>)}
+          {t.lyrics && (<><h4>{copyVal(copy, 'track_lyrics', 'LYRICS')}{t.lyricist ? ` — ${t.lyricist}` : ''}</h4><pre className="trk-lyrics">{t.lyrics}</pre></>)}
         </div>
       )}
     </div>
   );
 }
 
-function AlbumView({ album, tracks, onClose }) {
+function AlbumView({ album, tracks, onClose, copy }) {
   const [openTrack, setOpenTrack] = useState(null);
   const ovRef = useRef(null), panelRef = useRef(null);
   useEffect(() => {
@@ -345,7 +345,7 @@ function AlbumView({ album, tracks, onClose }) {
         <div className="album-head">
           <img className="album-cover" src={att(album.cover)} alt={album.title} />
           <div className="album-info">
-            <span className="bio-eyebrow" style={{ color: 'var(--blue)' }}>NXG // RELEASE</span>
+            <span className="bio-eyebrow" style={{ color: 'var(--blue)' }}>{copyVal(copy, 'album_eyebrow', 'NXG // RELEASE')}</span>
             <h2>{album.title}</h2>
             {album.release_date && <div className="album-date">{album.release_date}</div>}
             {album.blurb && <p className="album-blurb">{album.blurb}</p>}
@@ -354,9 +354,9 @@ function AlbumView({ album, tracks, onClose }) {
         <div className="tracklist">
           {list.length
             ? list.map((t, i) => (
-              <TrackRow key={t.id} t={t} n={i + 1} open={openTrack === t.id} onToggle={() => setOpenTrack(openTrack === t.id ? null : t.id)} />
+              <TrackRow key={t.id} t={t} n={i + 1} open={openTrack === t.id} onToggle={() => setOpenTrack(openTrack === t.id ? null : t.id)} copy={copy} />
             ))
-            : <div className="track-empty">No tracks linked to this album yet — add them in the TRACKS table and link the album.</div>}
+            : <div className="track-empty">{copyVal(copy, 'album_empty', 'No tracks linked to this album yet.')}</div>}
         </div>
       </div>
     </div>
@@ -394,7 +394,7 @@ function MediaLightbox({ photos, index, title, onClose, onNav }) {
   );
 }
 
-function MediaSection({ media }) {
+function MediaSection({ media, copy }) {
   const albums = React.useMemo(() => (media || [])
     .filter((m) => !m.vault_only)
     .map((m) => {
@@ -420,8 +420,8 @@ function MediaSection({ media }) {
   const openAlbum = (a) => { setAlbum(a); setIdx(0); };
   return (
     <section className="sec mediasec" id="media">
-      <span className="eyebrow">03 — THE FEED</span>
-      <h2>MEDIA</h2>
+      <span className="eyebrow">{copyVal(copy, 'eyebrow_media', '03 — THE FEED')}</span>
+      <h2>{copyVal(copy, 'head_media', 'MEDIA')}</h2>
       <div className="media-tabs">
         <button className={tab === 'image' ? 'on' : ''} onClick={() => switchTab('image')}>PHOTOS</button>
         <button className={tab === 'video' ? 'on' : ''} onClick={() => switchTab('video')}>VIDEOS</button>
@@ -452,11 +452,11 @@ function MediaSection({ media }) {
   );
 }
 
-function PrivateContent({ packs }) {
+function PrivateContent({ packs, copy }) {
   return (
     <section className="sec vault" id="private">
-      <span className="eyebrow">07 — MEMBERS ONLY</span>
-      <h2>PRIVATE CONTENT <i className="hex">⬡</i></h2>
+      <span className="eyebrow">{copyVal(copy, 'eyebrow_private', '07 — MEMBERS ONLY')}</span>
+      <h2>{copyVal(copy, 'head_private', 'PRIVATE CONTENT')} <i className="hex">⬡</i></h2>
       {packs.length ? (
         <Belt
           items={packs} size="md" resetKey={packs.length} onTap={() => {}}
@@ -542,6 +542,7 @@ export default function App() {
   const hero = att(settings.hero_image, HERO_FALLBACK);
   const aboutBrands = ((data && data.about) || []).filter((b) => att(b.logo));
   const copy = (data && data.copy) || [];
+  setLang(activeLang);                          // keep data-layer column in sync each render
   const tagText = copyVal(copy, 'tagline', 'NODE X GENERATION');
 
   let members = pub(data && data.members);
@@ -678,7 +679,15 @@ export default function App() {
   /* ---- enter ---- */
   function enter() { try { localStorage.setItem('nxg_seen', Date.now()); } catch (e) {} setPhase('site'); }
   function scrollTo(id) { setMenuOpen(false); const el = document.getElementById(id); if (!el) return; setTimeout(() => { if (window.__lenis) window.__lenis.scrollTo(el, { offset: 0 }); else el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' }); }, 200); }
-  function pickLang(code) { setActiveLang(code); if (code !== 'EN') { setLangNote(true); clearTimeout(window._lt); window._lt = setTimeout(() => setLangNote(false), 1800); } }
+  function pickLang(code) {
+    setActiveLang(code);
+    setLang(code);                              // tell the data layer which column to read
+    try {
+      const c = code.toLowerCase();
+      document.documentElement.setAttribute('lang', c === 'fil' ? 'fil' : c);
+      document.documentElement.setAttribute('data-lang', c);  // CSS themes + fonts hook
+    } catch (e) {}
+  }
 
   const entered = phase === 'site';
 
@@ -691,31 +700,31 @@ export default function App() {
             <div className="hero-bg"><BgLayers url={bgUrl} /></div>
             <div className="hero-fade" />
             <div className="socials">
-              <span className="soc-label">LISTEN &amp; FOLLOW</span>
+              <span className="soc-label">{copyVal(copy, 'hero_follow', 'LISTEN & FOLLOW')}</span>
               <div className="soc-row">
                 {socials.map((s, i) => (
                   <a className="soc" key={i} href={s.url || '#'} target="_blank" rel="noreferrer" aria-label={s.platform} title={s.platform}><SocialIcon platform={s.platform} /></a>
                 ))}
               </div>
             </div>
-            <div className="scrollhint">SCROLL <span>↓</span></div>
+            <div className="scrollhint">{copyVal(copy, 'hero_scroll', 'SCROLL')} <span>↓</span></div>
           </section>
 
           <section className="sec memsec" id="members">
-            <span className="eyebrow">01 — THE GROUP</span>
-            <h2>MEMBERS</h2>
+            <span className="eyebrow">{copyVal(copy, 'eyebrow_members', '01 — THE GROUP')}</span>
+            <h2>{copyVal(copy, 'head_members', 'MEMBERS')}</h2>
             <div className="mgrid">
-              {members.map((m, i) => <MemberCard key={i} m={m} onOpen={setBioMember} />)}
+              {members.map((m, i) => <MemberCard key={i} m={m} onOpen={setBioMember} copy={copy} />)}
             </div>
           </section>
 
-          <Discography albums={albums} tracks={tracks} onOpen={setOpenAlbum} />
+          <Discography albums={albums} tracks={tracks} onOpen={setOpenAlbum} copy={copy} />
 
-          <MediaSection media={media} />
+          <MediaSection media={media} copy={copy} />
 
           <section className="sec" id="merch">
-            <span className="eyebrow b">04 — SHOP</span>
-            <h2>MERCH</h2>
+            <span className="eyebrow b">{copyVal(copy, 'eyebrow_merch', '04 — SHOP')}</span>
+            <h2>{copyVal(copy, 'head_merch', 'MERCH')}</h2>
             {merch.length ? (
               <Belt
                 items={merch} size="lg" resetKey={merch.length} onTap={() => {}}
@@ -726,16 +735,16 @@ export default function App() {
                       {m.price != null && <span className="bc-price">${m.price}</span>}
                     </div>
                     <span className="bc-cap">{m.name || m.title}</span>
-                    <button className="bc-btn ghost" disabled>STORE OPENS SOON</button>
+                    <button className="bc-btn ghost" disabled>{copyVal(copy, 'merch_btn', 'STORE OPENS SOON')}</button>
                   </>
                 )}
               />
-            ) : <p className="media-empty">Store opening soon.</p>}
+            ) : <p className="media-empty">{copyVal(copy, 'merch_empty', 'Store opening soon.')}</p>}
           </section>
 
           <section className="sec" id="partners">
-            <span className="eyebrow">05 — NXG IRL</span>
-            <h2>PARTNERS</h2>
+            <span className="eyebrow">{copyVal(copy, 'eyebrow_partners', '05 — NXG IRL')}</span>
+            <h2>{copyVal(copy, 'head_partners', 'PARTNERS')}</h2>
             {partners.length ? (
               <Belt
                 items={partners} size="md" resetKey={partners.length}
@@ -747,12 +756,12 @@ export default function App() {
                   </>
                 )}
               />
-            ) : <p className="media-empty">Partners revealed soon.</p>}
+            ) : <p className="media-empty">{copyVal(copy, 'partners_empty', 'Partners revealed soon.')}</p>}
           </section>
 
           <section className="sec" id="about">
-            <span className="eyebrow b">06 — THE CONCEPT</span>
-            <h2>ABOUT</h2>
+            <span className="eyebrow b">{copyVal(copy, 'eyebrow_about', '06 — THE CONCEPT')}</span>
+            <h2>{copyVal(copy, 'head_about', 'ABOUT')}</h2>
             {copyVal(copy, 'about_body') && <p style={{ maxWidth: 620, textTransform: 'none', lineHeight: 1.7, color: 'var(--ink)', whiteSpace: 'pre-wrap' }}>{copyVal(copy, 'about_body')}</p>}
             {aboutBrands.length > 0 && (
               <div className="about-brands">
@@ -767,7 +776,7 @@ export default function App() {
             )}
           </section>
 
-          <PrivateContent packs={packs} />
+          <PrivateContent packs={packs} copy={copy} />
         </main>
       )}
 
@@ -783,14 +792,14 @@ export default function App() {
       <nav className={'menu' + (menuOpen ? ' open' : '')} aria-hidden={!menuOpen}>
         <div className="menu-top"><span className="tn-mark">NXG</span><button className="menu-x" aria-label="Close menu" onClick={() => setMenuOpen(false)}>✕</button></div>
         <ul className="menu-links">
-          {[['home', 'HOME'], ['members', 'MEMBERS'], ['discography', 'DISCOGRAPHY'], ['media', 'MEDIA'], ['merch', 'MERCH'], ['partners', 'PARTNERS'], ['about', 'ABOUT']].map(([id, label]) => (
-            <li key={id} onClick={() => scrollTo(id)}>{label}</li>
+          {[['home', 'nav_home', 'HOME'], ['members', 'nav_members', 'MEMBERS'], ['discography', 'nav_discography', 'DISCOGRAPHY'], ['media', 'nav_media', 'MEDIA'], ['merch', 'nav_merch', 'MERCH'], ['partners', 'nav_partners', 'PARTNERS'], ['about', 'nav_about', 'ABOUT']].map(([id, k, label]) => (
+            <li key={id} onClick={() => scrollTo(id)}>{copyVal(copy, k, label)}</li>
           ))}
-          <li onClick={() => scrollTo('private')}>PRIVATE CONTENT <span className="lock">⬡</span></li>
+          <li onClick={() => scrollTo('private')}>{copyVal(copy, 'nav_private', 'PRIVATE CONTENT')} <span className="lock">⬡</span></li>
         </ul>
         <div className="menu-foot">
           <span className="t-node">NODE</span> <span className="t-x">X</span> <span className="t-gen">GENERATION</span> &nbsp;·&nbsp;
-          <button className="replay" onClick={() => { setMenuOpen(false); runBoot(); }}>↺ replay intro</button>
+          <button className="replay" onClick={() => { setMenuOpen(false); runBoot(); }}>↺ {copyVal(copy, 'menu_replay', 'replay intro')}</button>
         </div>
       </nav>
 
@@ -815,25 +824,24 @@ export default function App() {
       {phase !== 'boot' && (
         <section className={'overlay gate' + (phase === 'gate' ? ' show' : ' out')} style={phase === 'site' ? { pointerEvents: 'none' } : null}>
           <div className="void"><BgLayers url={bgUrl} /></div>
-          <div className="topbar"><span className="status"><i className="dot" /> SIGNAL ACTIVE</span><span className="est">EST · MMXXVI</span></div>
+          <div className="topbar"><span className="status"><i className="dot" /> {copyVal(copy, 'gate_signal', 'SIGNAL ACTIVE')}</span><span className="est">EST · MMXXVI</span></div>
           <div className="hero-gate">
             <div className="emblem-tilt" ref={tiltRef}><img className="emblem" src={logo} alt="NXG" draggable="false" /></div>
             <div className="tagline"><span className="t-node">NODE</span> <span className="t-x">X</span> <span className="t-gen">GENERATION</span></div>
             <div className="langs">
               {LANGS.map(([code, label]) => (
-                <button key={code} className={'lang' + (activeLang === code ? ' on' : '') + (code !== 'EN' ? ' soon' : '')} onClick={() => pickLang(code)}>{label}</button>
+                <button key={code} className={'lang' + (activeLang === code ? ' on' : '')} onClick={() => pickLang(code)}>{label}</button>
               ))}
             </div>
-            <div className={'langnote' + (langNote ? ' show' : '')}>translations coming soon</div>
-            <button className="enter" onClick={enter}>ENTER<span className="ar">→</span></button>
+            <button className="enter" onClick={enter}>{copyVal(copy, 'cta_enter', 'ENTER')}<span className="ar">→</span></button>
           </div>
         </section>
       )}
 
       {/* ===== PLAYER (real Spotify, plays count) ===== */}
-      <SpotifyPlayer tracks={pub(data && data.tracks)} show={entered} logo={logo} />
-      <MemberBio m={bioMember} onClose={() => setBioMember(null)} />
-      <AlbumView album={openAlbum} tracks={tracks} onClose={() => setOpenAlbum(null)} />
+      <SpotifyPlayer tracks={pub(data && data.tracks)} show={entered} logo={logo} nowLabel={copyVal(copy, 'player_now', 'NOW PLAYING')} />
+      <MemberBio m={bioMember} onClose={() => setBioMember(null)} copy={copy} />
+      <AlbumView album={openAlbum} tracks={tracks} onClose={() => setOpenAlbum(null)} copy={copy} />
       {photo && (
         <div className="photo-ov" onClick={() => setPhoto(null)}>
           <button className="photo-x" onClick={() => setPhoto(null)} aria-label="Close">✕</button>

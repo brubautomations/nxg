@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-// Fetch all site content from the Netlify function (which proxies Airtable).
+// Fetch all site content from the Netlify function (which proxies the CMS).
 export function useData() {
   const [data, setData] = useState(null);
   useEffect(() => {
@@ -32,13 +32,33 @@ export function usePrivate() {
 export const pub = (arr) =>
   (arr || []).filter((r) => r.published).sort((a, b) => (a.order || 0) - (b.order || 0));
 
-// look up a text value from the COPY table by key, with a default
+/* ===== language ===== */
+// UI button codes (uppercase) -> content column names (lowercase).
+// English is the universal fallback for any blank/missing cell.
+const LANG_COL = { EN: 'en', KO: 'ko', JA: 'ja', ZH: 'zh', FIL: 'fil', ES: 'es' };
+
+// module-level current language so existing copyVal(copy, 'key') calls keep working.
+let CURRENT_LANG = 'EN';
+export const setLang = (code) => { CURRENT_LANG = LANG_COL[code] ? code : 'EN'; };
+export const getLang = () => CURRENT_LANG;
+
+// look up a text value from the COPY table by key, in the active language,
+// falling back to English, then to the supplied default.
 export const copyVal = (copy, key, def = '') => {
   const row = (copy || []).find((c) => c.key === key);
-  return row && row.value != null ? row.value : def;
+  if (!row) return def;
+  const col = LANG_COL[CURRENT_LANG] || 'en';
+  // prefer active language; if that cell is blank, fall back to English; else default.
+  const val = row[col];
+  if (val != null && String(val).trim() !== '') return val;
+  const en = row.en;
+  if (en != null && String(en).trim() !== '') return en;
+  // legacy support: if an old `value` column still exists, use it.
+  if (row.value != null && String(row.value).trim() !== '') return row.value;
+  return def;
 };
 
-// first attachment URL from an Airtable attachment field, else a fallback
+// first attachment URL from a CMS attachment field, else a fallback
 export const att = (field, fallback = '') =>
   Array.isArray(field) && field[0] && field[0].url ? field[0].url : fallback;
 

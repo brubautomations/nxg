@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&family=Noto+Sans+SC:wght@400;500;700;800&display=swap');
 /* Lenis smooth scroll (official baseline) */
 html.lenis,html.lenis body{height:auto}
 .lenis.lenis-smooth{scroll-behavior:auto!important}
@@ -412,3 +413,77 @@ html{scroll-behavior:smooth;}
   /* landing image: show the WHOLE photo on mobile (no crop) — bg-layer is the real element */
   .void .bg-layer,.hero-bg .bg-layer{ background-size:contain; background-position:center; }
 }
+
+/* ============================================================
+   PHASE 1 — LANGUAGE THEMES (flag-based) + CJK FONTS
+   data-lang is set on <html> by pickLang(). EN = default (pink/blue).
+   Each language overrides the palette via #root variables.
+   Blank cells fall back to English text in JS; this only handles look.
+   ============================================================ */
+
+/* --- fonts: load mono-friendly CJK so the cyber aesthetic survives translation --- */
+/* (the @import itself lives at the very top of this file, as CSS spec requires) */
+
+/* default Latin stack keeps Noto Sans Mono as a web-safe reinforcement */
+html[data-lang="en"]  #root,
+html[data-lang="fil"] #root,
+html[data-lang="es"]  #root{
+  --mono:'Noto Sans Mono',ui-monospace,'SFMono-Regular','JetBrains Mono',Menlo,Consolas,monospace;
+}
+
+/* CJK: pair the mono base with the matching Noto CJK so characters render crisp.
+   Headings still read as the NXG display weight; body stays legible. */
+html[data-lang="ko"] #root{ --mono:'Noto Sans Mono','Noto Sans KR',ui-monospace,Menlo,monospace; }
+html[data-lang="ja"] #root{ --mono:'Noto Sans Mono','Noto Sans JP',ui-monospace,Menlo,monospace; }
+html[data-lang="zh"] #root{ --mono:'Noto Sans Mono','Noto Sans SC',ui-monospace,Menlo,monospace; }
+
+/* CJK headings need a touch more weight + tighter leading to look intentional */
+html[data-lang="ko"] .sec h2,
+html[data-lang="ja"] .sec h2,
+html[data-lang="zh"] .sec h2{ letter-spacing:0; font-weight:800; }
+
+/* ---------- KOREAN — Taegukgi: white / red / blue (Yoora) ---------- */
+html[data-lang="ko"] #root{
+  --pink:#cd2e3a;   /* taegeuk red */
+  --blue:#0047a0;   /* taegeuk blue */
+  --violet:#7b1f2a;
+}
+
+/* ---------- JAPANESE — Hinomaru: white / red (Haruka) ---------- */
+html[data-lang="ja"] #root{
+  --pink:#bc002d;   /* hinomaru red */
+  --blue:#8c0020;   /* deep red as the secondary, keeps it national not pink */
+  --violet:#d4476a;
+  --bg:#fffafa;
+}
+
+/* ---------- CHINESE — red / gold (Chenxi) ---------- */
+html[data-lang="zh"] #root{
+  --pink:#de2910;   /* prc red */
+  --blue:#c8a013;   /* gold-yellow as secondary */
+  --violet:#ffde00;
+}
+
+/* ---------- FILIPINO — flag: blue / red / white + golden sun (Saraya) ---------- */
+html[data-lang="fil"] #root{
+  --pink:#ce1126;   /* flag red */
+  --blue:#0038a8;   /* flag blue */
+  --violet:#fcd116; /* sun gold */
+}
+
+/* ---------- SPANISH — Rojigualda: red / gold (Saraya ES side) ---------- */
+html[data-lang="es"] #root{
+  --pink:#c60b1e;   /* spain red */
+  --blue:#c8a013;   /* spain gold as secondary */
+  --violet:#ffc400;
+}
+
+/* keep the NODE·X·GENERATION wordmark readable across themes
+   (it uses pink->blue gradient; on red/red JA that could vanish) */
+html[data-lang="ja"] .t-x{
+  background:linear-gradient(90deg,var(--pink),var(--violet));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+
+/* language buttons: show the active one in that theme's colors already
+   (selector sits on the gate, which reads #root vars) */
