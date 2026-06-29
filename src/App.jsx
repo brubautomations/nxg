@@ -170,6 +170,7 @@ function TalkToNXG({ lang, data, members }) {
   const audioRef = useRef(null);
   const ringTimer = useRef(null);
   const ringAudioRef = useRef(null);   // synthesized ringtone (Web Audio)
+  const answerTimer = useRef(null);    // pending "she answers after pause" timer
 
   // which member answers in this edition
   const memberName = (lang === 'EN' || !EDITION_MEMBER[lang]) ? memberOfDay() : EDITION_MEMBER[lang];
@@ -253,6 +254,48 @@ function TalkToNXG({ lang, data, members }) {
     } catch (e) {}
   }
 
+  // "question sent" — short rising blip
+  function sentBlip() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(520, t);
+      o.frequency.exponentialRampToValueAtTime(880, t + 0.12);   // rising = "sent"
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.12, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t); o.stop(t + 0.18);
+      setTimeout(() => { try { ctx.close(); } catch (e) {} }, 350);
+    } catch (e) {}
+  }
+
+  // "answer finished" — soft descending tone
+  function doneTone() {
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(660, t);
+      o.frequency.exponentialRampToValueAtTime(440, t + 0.16);   // falling = "done"
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.08, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t); o.stop(t + 0.24);
+      setTimeout(() => { try { ctx.close(); } catch (e) {} }, 400);
+    } catch (e) {}
+  }
+
   function startCall() {
     setOpen(true);
     setStage('ringing');
@@ -269,6 +312,7 @@ function TalkToNXG({ lang, data, members }) {
   }
   function endCall() {
     clearTimeout(ringTimer.current);
+    clearTimeout(answerTimer.current);   // cancel any pending answer
     stopRing();
     if (audioRef.current) { audioRef.current.pause(); }
     setPlaying(false);
@@ -294,15 +338,20 @@ function TalkToNXG({ lang, data, members }) {
   function askQuestion(q) {
     if (locks.used.includes(q.key)) return;             // already used today
     const pool = answers.filter((a) => a.published && a.question_key === q.key && a.member === memberName);
-    playRandom(pool, q.key);
+    // lock immediately so it can't be double-tapped during the pause
     const next = { day: todayKey(), used: [...locks.used, q.key] };
     setLocks(next); writeLocks(next);
+    // "sent" sound, then a short realistic beat, then she answers
+    sentBlip();
+    clearTimeout(answerTimer.current);
+    answerTimer.current = setTimeout(() => playRandom(pool, q.key), 800);
   }
 
   useEffect(() => {
     const a = audioRef.current;
     if (!a) return;
-    const onEnd = () => setPlaying(false);
+    // when her answer finishes playing, play the soft "done" tone
+    const onEnd = () => { setPlaying(false); doneTone(); };
     a.addEventListener('ended', onEnd);
     return () => a.removeEventListener('ended', onEnd);
   }, []);
