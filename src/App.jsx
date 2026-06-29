@@ -314,7 +314,7 @@ function TalkToNXG({ lang, data, members }) {
     clearTimeout(ringTimer.current);
     clearTimeout(answerTimer.current);   // cancel any pending answer
     stopRing();
-    if (audioRef.current) { audioRef.current.pause(); }
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current.muted = false; }
     setPlaying(false);
     setStage('idle');
     setOpen(false);
@@ -328,23 +328,50 @@ function TalkToNXG({ lang, data, members }) {
     if (usable.length > 1 && lastClip[qkey]) choices = usable.filter((u) => u !== lastClip[qkey]);
     const url = choices[Math.floor(Math.random() * choices.length)];
     setLastClip((m) => ({ ...m, [qkey]: url }));
-    if (audioRef.current) {
-      audioRef.current.src = url;
-      setPlaying(true);
-      audioRef.current.play().catch(() => setPlaying(false));
+    const a = audioRef.current;
+    if (!a) return;
+    // Unlock audio on the tap gesture (so the browser never blocks playback),
+    // but keep her voice from the very start: we "prime" with a muted play,
+    // immediately pause + reset to 0, hold through the beat, then play for real.
+    clearTimeout(answerTimer.current);
+    a.pause();
+    a.muted = true;
+    a.src = url;
+    setPlaying(true);
+    const realPlay = () => {
+      answerTimer.current = setTimeout(() => {
+        try {
+          a.muted = false;
+          a.currentTime = 0;
+          a.play().catch(() => setPlaying(false));
+        } catch (e) { setPlaying(false); }
+      }, 800);
+    };
+    const prime = a.play();           // muted prime within the gesture = unlocks audio
+    if (prime && typeof prime.then === 'function') {
+      prime.then(() => { a.pause(); a.currentTime = 0; realPlay(); })
+           .catch(() => {
+             // browser blocked even the prime — just play her voice directly after beat
+             answerTimer.current = setTimeout(() => {
+               try { a.muted = false; a.currentTime = 0; a.play().catch(() => setPlaying(false)); }
+               catch (e) { setPlaying(false); }
+             }, 800);
+           });
+    } else {
+      a.pause(); a.currentTime = 0; realPlay();
     }
   }
 
   function askQuestion(q) {
     if (locks.used.includes(q.key)) return;             // already used today
     const pool = answers.filter((a) => a.published && a.question_key === q.key && a.member === memberName);
-    // lock immediately so it can't be double-tapped during the pause
+    // lock immediately so it can't be double-tapped during the beat
     const next = { day: todayKey(), used: [...locks.used, q.key] };
     setLocks(next); writeLocks(next);
-    // "sent" sound, then a short realistic beat, then she answers
+    // "sent" sound fires on tap; playRandom starts the (muted) audio on the same
+    // gesture, then her voice comes in after the beat.
     sentBlip();
-    clearTimeout(answerTimer.current);
-    answerTimer.current = setTimeout(() => playRandom(pool, q.key), 800);
+    playRandom(pool, q.key);
   }
 
   useEffect(() => {
