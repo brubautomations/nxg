@@ -1,0 +1,5 @@
+# robots.txt for wearenxg.com
+# Allow all crawlers and preview bots full access.
+
+User-agent: *
+Allow: /
