@@ -301,8 +301,8 @@ button{font-family:inherit;}
 .menu.open{opacity:1; pointer-events:auto;}
 /* faded per-language background photo (assets/menu/{lang}.png) */
 .menu-bg{position:absolute; inset:0; background-size:cover; background-position:center;
-  opacity:.12; filter:blur(2px) saturate(1.05); pointer-events:none; z-index:0;}
-.menu-bg::after{content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(252,252,254,.35), rgba(252,252,254,.7));}
+  opacity:.5; filter:blur(1px) saturate(1.05); pointer-events:none; z-index:0;}
+.menu-bg::after{content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(252,252,254,.12), rgba(252,252,254,.35));}
 .menu-top,.menu-links,.menu-foot{position:relative; z-index:1;}
 .menu-top{display:flex; justify-content:space-between; align-items:center;}
 .menu-x{width:38px; height:38px; border-radius:50%; background:#fff; border:1px solid var(--line); color:var(--ink); font-size:14px; cursor:pointer; transition:.2s;}
