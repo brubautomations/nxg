@@ -1323,6 +1323,7 @@ export default function App() {
 
       {/* ===== MENU ===== */}
       <nav className={'menu' + (menuOpen ? ' open' : '')} aria-hidden={!menuOpen}>
+        <div className="menu-bg" style={{ backgroundImage: `url(/assets/menu/${activeLang.toLowerCase()}.png)` }} aria-hidden="true" />
         <div className="menu-top"><span className="tn-mark">NXG</span><button className="menu-x" aria-label="Close menu" onClick={() => setMenuOpen(false)}>✕</button></div>
         <ul className="menu-links">
           {[['home', 'nav_home', 'HOME'], ['members', 'nav_members', 'MEMBERS'], ['discography', 'nav_discography', 'DISCOGRAPHY'], ['media', 'nav_media', 'MEDIA'], ['merch', 'nav_merch', 'MERCH'], ['partners', 'nav_partners', 'PARTNERS'], ['about', 'nav_about', 'ABOUT']].map(([id, k, label]) => (
