@@ -978,10 +978,11 @@ function BgLayers({ url }) {
   const [cur, setCur] = useState(url);
   const prev = useRef(url);
   useEffect(() => { if (url !== cur) { prev.current = cur; setCur(url); } }, [url]);
+  const bg = (u) => (u ? `url(${u})` : 'none');
   return (
     <>
-      <div className="bg-layer" style={{ backgroundImage: `url(${prev.current})` }} />
-      <div className="bg-layer bg-top" key={cur} style={{ backgroundImage: `url(${cur})` }} />
+      <div className="bg-layer" style={{ backgroundImage: bg(prev.current) }} />
+      <div className="bg-layer bg-top" key={cur} style={{ backgroundImage: bg(cur) }} />
     </>
   );
 }
@@ -1025,7 +1026,7 @@ export default function App() {
   const [openAlbum, setOpenAlbum] = useState(null);
   const [photo, setPhoto] = useState(null);
   const [bgPool, setBgPool] = useState([]);
-  const [bgUrl, setBgUrl] = useState(HERO_FALLBACK);
+  const [bgUrl, setBgUrl] = useState('');
 
   const lastRef = useRef(null);
   const chibiRef = useRef(null), innerRef = useRef(null), pctRef = useRef(null),
@@ -1106,10 +1107,11 @@ export default function App() {
   }, [phase, members.length, albums.length, media.length, packs.length, partners.length, merch.length]);
 
   // discover landing background photos in /assets/landing.
-  // On mobile (<=768px) prefer a vertical "{i}-mobile.png" if it exists,
-  // otherwise fall back to "{i}.png". Desktop always uses "{i}.png".
-  // Drop a new 7.png (shows on both) or 7-mobile.png (mobile-specific) and it
-  // appears automatically — no code changes needed.
+  // Mobile (<=768px): use ONLY "{i}-mobile.png" — never desktop images.
+  // Desktop: use ONLY "{i}.png".
+  // Each set is discovered independently, so you can have any number of mobile
+  // photos (fewer OR more than desktop). Drop files in /assets/landing/ and they
+  // appear automatically — no code changes needed.
   useEffect(() => {
     const isMobile = window.matchMedia('(max-width: 768px)').matches;
     const found = []; let pending = 0, done = false; const MAX = 50;
@@ -1120,27 +1122,14 @@ export default function App() {
       setBgPool(urls);
       if (urls.length) setBgUrl(urls[Math.floor(Math.random() * urls.length)]);
     };
-    // probe one slot: try the mobile variant first (if on mobile), then the base.
-    const probeSlot = (i) => {
+    for (let i = 1; i <= MAX; i++) {
       pending++;
-      const baseUrl = `/assets/landing/${i}.png`;
-      const mobileUrl = `/assets/landing/${i}-mobile.png`;
-      const useBase = () => {
-        const im2 = new Image();
-        im2.onload = () => { found.push({ i, url: baseUrl }); if (--pending === 0) finalize(); };
-        im2.onerror = () => { if (--pending === 0) finalize(); };
-        im2.src = baseUrl;
-      };
-      if (isMobile) {
-        const im = new Image();
-        im.onload = () => { found.push({ i, url: mobileUrl }); if (--pending === 0) finalize(); };
-        im.onerror = useBase;          // no mobile version → fall back to base
-        im.src = mobileUrl;
-      } else {
-        useBase();
-      }
-    };
-    for (let i = 1; i <= MAX; i++) probeSlot(i);
+      const url = isMobile ? `/assets/landing/${i}-mobile.png` : `/assets/landing/${i}.png`;
+      const im = new Image();
+      im.onload = () => { found.push({ i, url }); if (--pending === 0) finalize(); };
+      im.onerror = () => { if (--pending === 0) finalize(); };
+      im.src = url;
+    }
   }, []);
   useEffect(() => {
     if (reduce || bgPool.length < 2) return;
