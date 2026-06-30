@@ -1105,8 +1105,13 @@ export default function App() {
     // eslint-disable-next-line
   }, [phase, members.length, albums.length, media.length, packs.length, partners.length, merch.length]);
 
-  // discover landing background photos in /assets/landing (1.jpg, 2.jpg, ...)
+  // discover landing background photos in /assets/landing.
+  // On mobile (<=768px) prefer a vertical "{i}-mobile.png" if it exists,
+  // otherwise fall back to "{i}.png". Desktop always uses "{i}.png".
+  // Drop a new 7.png (shows on both) or 7-mobile.png (mobile-specific) and it
+  // appears automatically — no code changes needed.
   useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
     const found = []; let pending = 0, done = false; const MAX = 50;
     const finalize = () => {
       if (done) return; done = true;
@@ -1115,12 +1120,27 @@ export default function App() {
       setBgPool(urls);
       if (urls.length) setBgUrl(urls[Math.floor(Math.random() * urls.length)]);
     };
-    for (let i = 1; i <= MAX; i++) {
-      pending++; const im = new Image(); const url = `/assets/landing/${i}.png`;
-      im.onload = () => { found.push({ i, url }); if (--pending === 0) finalize(); };
-      im.onerror = () => { if (--pending === 0) finalize(); };
-      im.src = url;
-    }
+    // probe one slot: try the mobile variant first (if on mobile), then the base.
+    const probeSlot = (i) => {
+      pending++;
+      const baseUrl = `/assets/landing/${i}.png`;
+      const mobileUrl = `/assets/landing/${i}-mobile.png`;
+      const useBase = () => {
+        const im2 = new Image();
+        im2.onload = () => { found.push({ i, url: baseUrl }); if (--pending === 0) finalize(); };
+        im2.onerror = () => { if (--pending === 0) finalize(); };
+        im2.src = baseUrl;
+      };
+      if (isMobile) {
+        const im = new Image();
+        im.onload = () => { found.push({ i, url: mobileUrl }); if (--pending === 0) finalize(); };
+        im.onerror = useBase;          // no mobile version → fall back to base
+        im.src = mobileUrl;
+      } else {
+        useBase();
+      }
+    };
+    for (let i = 1; i <= MAX; i++) probeSlot(i);
   }, []);
   useEffect(() => {
     if (reduce || bgPool.length < 2) return;
