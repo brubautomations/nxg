@@ -29,20 +29,15 @@ const LANGS = [['EN', 'EN'], ['KO', '한국어'], ['JA', '日本語'], ['ZH', '�
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 
-// Lock page scroll while a modal/popup is open: stop Lenis smooth-scroll AND
-// freeze the body, so wheel/touch scroll the popup's own content instead of the
-// page behind it. Restores both on close.
+// Lock the page (background) from scrolling while a modal/popup is open, WITHOUT
+// stopping Lenis entirely — the popup's own scrollable area is marked with
+// data-lenis-prevent so wheel/touch scroll works inside it natively.
 function useScrollLock(active) {
   useEffect(() => {
     if (!active) return;
-    const lenis = (typeof window !== 'undefined') ? window.__lenis : null;
     const prevOverflow = document.body.style.overflow;
-    try { if (lenis && lenis.stop) lenis.stop(); } catch (e) {}
     document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prevOverflow;
-      try { if (lenis && lenis.start) lenis.start(); } catch (e) {}
-    };
+    return () => { document.body.style.overflow = prevOverflow; };
   }, [active]);
 }
 
@@ -180,6 +175,7 @@ const writeLocks = (obj) => { try { localStorage.setItem(LOCK_KEY, JSON.stringif
 
 function TalkToNXG({ lang, data, members }) {
   const [open, setOpen] = useState(false);
+  useScrollLock(open);
   const [stage, setStage] = useState('idle');   // idle | ringing | connected
   const [locks, setLocks] = useState(() => (typeof window !== 'undefined' ? readLocks() : { day: '', used: [] }));
   const [lastClip, setLastClip] = useState({}); // question_key -> last audio url (avoid repeat)
@@ -421,7 +417,7 @@ function TalkToNXG({ lang, data, members }) {
                   <div className="call-name sm">{memberName}</div>
                   <div className={'call-eq' + (playing ? ' on' : '')}><i /><i /><i /><i /></div>
                 </div>
-                <div className="call-q-list">
+                <div className="call-q-list" data-lenis-prevent>
                   {myQuestions.length === 0 && <div className="call-empty">No questions yet.</div>}
                   {myQuestions.map((q) => {
                     const used = locks.used.includes(q.key);
@@ -590,7 +586,7 @@ function MemberBio({ m, onClose, copy }) {
       <div className="bio-panel" onClick={(e) => e.stopPropagation()}>
         <button className="bio-close" onClick={onClose} aria-label="Close">✕</button>
         <div className="bio-img" style={{ backgroundImage: `url(${img})` }} />
-        <div className="bio-txt">
+        <div className="bio-txt" data-lenis-prevent>
           <span className="bio-eyebrow" style={{ color: m.color || '#ff2d8b' }}>{copyVal(copy, 'bio_eyebrow', 'NXG // MEMBER')}</span>
           <h2>{m.name}</h2>
           {m.tagline && <p className="bio-tag">“{m.tagline}”</p>}
@@ -840,7 +836,7 @@ function AlbumView({ album, tracks, onClose, copy }) {
     .sort((a, b) => (a.order || 0) - (b.order || 0));
   return (
     <div className="bio-ov" ref={ovRef} onClick={doClose}>
-      <div className="album-panel" ref={panelRef} onClick={(e) => e.stopPropagation()}>
+      <div className="album-panel" ref={panelRef} data-lenis-prevent onClick={(e) => e.stopPropagation()}>
         <button className="bio-close" onClick={doClose} aria-label="Close">✕</button>
         <div className="album-head">
           <img className="album-cover" src={att(album.cover)} alt={album.title} />
