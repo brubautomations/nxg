@@ -29,6 +29,23 @@ const LANGS = [['EN', 'EN'], ['KO', '한국어'], ['JA', '日本語'], ['ZH', '�
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 
+// Lock page scroll while a modal/popup is open: stop Lenis smooth-scroll AND
+// freeze the body, so wheel/touch scroll the popup's own content instead of the
+// page behind it. Restores both on close.
+function useScrollLock(active) {
+  useEffect(() => {
+    if (!active) return;
+    const lenis = (typeof window !== 'undefined') ? window.__lenis : null;
+    const prevOverflow = document.body.style.overflow;
+    try { if (lenis && lenis.stop) lenis.stop(); } catch (e) {}
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      try { if (lenis && lenis.start) lenis.start(); } catch (e) {}
+    };
+  }, [active]);
+}
+
 /* ===========================================================
    PHASE 2 — falling cultural particles (sparse, slow, premium)
    Reads the active language; draws the matching object on a
@@ -330,36 +347,23 @@ function TalkToNXG({ lang, data, members }) {
     setLastClip((m) => ({ ...m, [qkey]: url }));
     const a = audioRef.current;
     if (!a) return;
-    // Unlock audio on the tap gesture (so the browser never blocks playback),
-    // but keep her voice from the very start: we "prime" with a muted play,
-    // immediately pause + reset to 0, hold through the beat, then play for real.
+    // Simple + reliable: stop anything playing, load the new clip, and after the
+    // ~0.8s "beat" play it from the start. No muted-prime/promise juggling — that
+    // introduced a race where some clips silently never played. Autoplay isn't
+    // blocked here (the call already started from a user tap), so this is safe.
     clearTimeout(answerTimer.current);
-    a.pause();
-    a.muted = true;
+    try { a.pause(); } catch (e) {}
+    a.muted = false;
     a.src = url;
+    a.load();                          // explicitly (re)load the new source
     setPlaying(true);
-    const realPlay = () => {
-      answerTimer.current = setTimeout(() => {
-        try {
-          a.muted = false;
-          a.currentTime = 0;
-          a.play().catch(() => setPlaying(false));
-        } catch (e) { setPlaying(false); }
-      }, 800);
-    };
-    const prime = a.play();           // muted prime within the gesture = unlocks audio
-    if (prime && typeof prime.then === 'function') {
-      prime.then(() => { a.pause(); a.currentTime = 0; realPlay(); })
-           .catch(() => {
-             // browser blocked even the prime — just play her voice directly after beat
-             answerTimer.current = setTimeout(() => {
-               try { a.muted = false; a.currentTime = 0; a.play().catch(() => setPlaying(false)); }
-               catch (e) { setPlaying(false); }
-             }, 800);
-           });
-    } else {
-      a.pause(); a.currentTime = 0; realPlay();
-    }
+    answerTimer.current = setTimeout(() => {
+      try {
+        a.currentTime = 0;
+        const p = a.play();
+        if (p && typeof p.catch === 'function') p.catch(() => setPlaying(false));
+      } catch (e) { setPlaying(false); }
+    }, 800);
   }
 
   function askQuestion(q) {
@@ -578,6 +582,7 @@ function MemberCard({ m, onOpen, copy }) {
 }
 
 function MemberBio({ m, onClose, copy }) {
+  useScrollLock(!!m);
   if (!m) return null;
   const img = memberImages(m)[0];
   return (
@@ -818,6 +823,7 @@ function TrackRow({ t, n, open, onToggle, copy }) {
 function AlbumView({ album, tracks, onClose, copy }) {
   const [openTrack, setOpenTrack] = useState(null);
   const ovRef = useRef(null), panelRef = useRef(null);
+  useScrollLock(!!album);
   useEffect(() => {
     if (!album || reduce || !panelRef.current) return;
     gsap.fromTo(ovRef.current, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' });
@@ -859,6 +865,7 @@ function AlbumView({ album, tracks, onClose, copy }) {
 
 function MediaLightbox({ photos, index, title, onClose, onNav }) {
   const it = photos[index];
+  useScrollLock(true);
   useEffect(() => {
     const h = (e) => {
       if (e.key === 'Escape') onClose();
@@ -868,6 +875,14 @@ function MediaLightbox({ photos, index, title, onClose, onNav }) {
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [index, photos.length]);
+  // preload the next & previous images so navigating feels instant instead of laggy
+  useEffect(() => {
+    if (!photos || photos.length < 2) return;
+    [(index + 1) % photos.length, (index - 1 + photos.length) % photos.length].forEach((j) => {
+      const p = photos[j];
+      if (p && p.type === 'image' && p.url) { const im = new Image(); im.src = p.url; }
+    });
+  }, [index, photos]);
   if (!it) return null;
   const prev = (e) => { e.stopPropagation(); onNav((index - 1 + photos.length) % photos.length); };
   const next = (e) => { e.stopPropagation(); onNav((index + 1) % photos.length); };
