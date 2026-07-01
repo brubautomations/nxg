@@ -8,11 +8,21 @@ const TTL = 60 * 1000; // 60s in-memory cache to stay well under rate limits
 
 async function fetchTable(name) {
   try {
-    const url = `https://api.airtable.com/v0/${BASE}/${encodeURIComponent(name)}?pageSize=100`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
-    if (!res.ok) return []; // missing/renamed table never breaks the whole site
-    const json = await res.json();
-    return json.records.map((r) => ({ id: r.id, ...r.fields }));
+    const records = [];
+    let offset = null;
+    // Airtable returns max 100 records per page. Loop through ALL pages via the
+    // offset token so tables with >100 rows (like TALK_ANSWERS) are fully loaded.
+    do {
+      const params = new URLSearchParams({ pageSize: '100' });
+      if (offset) params.set('offset', offset);
+      const url = `https://api.airtable.com/v0/${BASE}/${encodeURIComponent(name)}?${params.toString()}`;
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
+      if (!res.ok) return records; // missing/renamed table never breaks the whole site
+      const json = await res.json();
+      (json.records || []).forEach((r) => records.push({ id: r.id, ...r.fields }));
+      offset = json.offset || null;
+    } while (offset);
+    return records;
   } catch (e) {
     return [];
   }
