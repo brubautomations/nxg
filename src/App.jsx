@@ -339,45 +339,50 @@ function TalkToNXG({ lang, data, members }) {
 
   function playRandom(pool, qkey) {
     const usable = pool.map((r) => att(r.audio)).filter(Boolean);
-    if (!usable.length) return;
+    console.log('[NXG] askQuestion', qkey, '| answer rows found:', pool.length, '| usable audio urls:', usable.length);
+    if (!usable.length) { console.warn('[NXG] NO usable audio for', qkey, '— pool:', pool); return; }
     // avoid repeating the last clip for this question
     let choices = usable;
     if (usable.length > 1 && lastClip[qkey]) choices = usable.filter((u) => u !== lastClip[qkey]);
     const url = choices[Math.floor(Math.random() * choices.length)];
+    console.log('[NXG] chosen url:', url);
     setLastClip((m) => ({ ...m, [qkey]: url }));
     const a = audioRef.current;
-    if (!a) return;
+    if (!a) { console.warn('[NXG] no audio element'); return; }
 
-    // The old approach played on a blind 800ms timer. If the clip hadn't buffered
-    // yet, play() silently did nothing (~50% failures, random by network speed).
-    // Fix: wait for BOTH (a) the ~0.8s realistic beat AND (b) the audio actually
-    // being ready to play. Only then start. No race, no silent no-ops.
     clearTimeout(answerTimer.current);
-    if (a._nxgCleanup) { a._nxgCleanup(); }      // tear down any previous listeners
+    if (a._nxgCleanup) { a._nxgCleanup(); }
     try { a.pause(); } catch (e) {}
     a.muted = false;
     a.currentTime = 0;
     a.src = url;
     a.load();
     setPlaying(true);
+    console.log('[NXG] src set + load() called. readyState now:', a.readyState);
 
     let beatDone = false;
-    let ready = a.readyState >= 3;               // HAVE_FUTURE_DATA or better
+    let ready = a.readyState >= 3;
     let started = false;
 
-    const start = () => {
+    const start = (via) => {
+      console.log('[NXG] start() via', via, '| beatDone:', beatDone, '| ready:', ready, '| started:', started, '| readyState:', a.readyState);
       if (started || !beatDone || !ready) return;
       started = true;
       cleanup();
       try {
         a.currentTime = 0;
         const p = a.play();
-        if (p && typeof p.catch === 'function') p.catch(() => setPlaying(false));
-      } catch (e) { setPlaying(false); }
+        if (p && typeof p.then === 'function') {
+          p.then(() => console.log('[NXG] ✅ play() RESOLVED — audio should be audible'))
+           .catch((err) => { console.error('[NXG] ❌ play() REJECTED:', err && err.name, err && err.message); setPlaying(false); });
+        } else {
+          console.log('[NXG] play() returned no promise (old browser)');
+        }
+      } catch (e) { console.error('[NXG] ❌ play() threw:', e); setPlaying(false); }
     };
 
-    const onCanPlay = () => { ready = true; start(); };
-    const onError = () => { cleanup(); setPlaying(false); };
+    const onCanPlay = () => { ready = true; start('canplay'); };
+    const onError = () => { console.error('[NXG] ❌ audio error event. code:', a.error && a.error.code); cleanup(); setPlaying(false); };
     const cleanup = () => {
       a.removeEventListener('canplay', onCanPlay);
       a.removeEventListener('canplaythrough', onCanPlay);
@@ -390,12 +395,8 @@ function TalkToNXG({ lang, data, members }) {
     a.addEventListener('canplaythrough', onCanPlay);
     a.addEventListener('error', onError);
 
-    // the realistic beat: after ~0.8s, mark the beat done and try to start
-    answerTimer.current = setTimeout(() => { beatDone = true; start(); }, 800);
-
-    // safety net: if something stalls and we never get "ready" within 6s,
-    // force a play attempt anyway so it's never permanently stuck silent.
-    setTimeout(() => { if (!started) { ready = true; beatDone = true; start(); } }, 6000);
+    answerTimer.current = setTimeout(() => { beatDone = true; start('beat-timer'); }, 800);
+    setTimeout(() => { if (!started) { console.warn('[NXG] ⚠️ 6s safety net firing — forcing play'); ready = true; beatDone = true; start('safety-net'); } }, 6000);
   }
 
   function askQuestion(q) {
