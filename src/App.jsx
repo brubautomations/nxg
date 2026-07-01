@@ -193,14 +193,16 @@ function TalkToNXG({ lang, data, members }) {
   const greetings = (data && data.talk_greetings) || [];
 
   // questions for this edition's language, published, ordered
+  const lnorm = (s) => String(s == null ? '' : s).trim().toLowerCase();
   const myQuestions = questions
-    .filter((q) => q.published && (q.lang === lang || (lang === 'EN' && q.lang === 'EN')))
+    .filter((q) => q.published && lnorm(q.lang) === lnorm(lang))
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 
   // this member's greeting for THIS edition's language (carries the call selfie photo)
-  const myGreet = greetings.filter((g) => g.published && g.member === memberName && g.lang === lang);
+  const gnorm = (s) => String(s == null ? '' : s).trim().toLowerCase();
+  const myGreet = greetings.filter((g) => g.published && gnorm(g.member) === gnorm(memberName) && gnorm(g.lang) === gnorm(lang));
   // fallback: if no greeting in this exact language, use any published greeting for the member
-  const greetPool = myGreet.length ? myGreet : greetings.filter((g) => g.published && g.member === memberName);
+  const greetPool = myGreet.length ? myGreet : greetings.filter((g) => g.published && gnorm(g.member) === gnorm(memberName));
   const selfie = greetPool.length ? att(greetPool[0].photo) : '';
   // member color from the members table for theming the call
   const memberObj = (members || []).find((m) => (m.name || '').toUpperCase() === memberName);
@@ -401,12 +403,19 @@ function TalkToNXG({ lang, data, members }) {
 
   function askQuestion(q) {
     if (locks.used.includes(q.key)) return;             // already used today
-    const pool = answers.filter((a) => a.published && a.question_key === q.key && a.member === memberName);
+    // normalize keys/members so a stray capital or trailing space can never
+    // orphan an answer row (this was causing intermittent "no answer").
+    const norm = (s) => String(s == null ? '' : s).trim().toLowerCase();
+    const qk = norm(q.key);
+    const mem = norm(memberName);
+    const pool = answers.filter((a) =>
+      a.published && norm(a.question_key) === qk && norm(a.member) === mem
+    );
+    console.log('[NXG] match', q.key, '-> rows:', pool.length, '| member:', memberName);
     // lock immediately so it can't be double-tapped during the beat
     const next = { day: todayKey(), used: [...locks.used, q.key] };
     setLocks(next); writeLocks(next);
-    // "sent" sound fires on tap; playRandom starts the (muted) audio on the same
-    // gesture, then her voice comes in after the beat.
+    // "sent" sound fires on tap; playRandom starts the audio after the beat.
     sentBlip();
     playRandom(pool, q.key);
   }
