@@ -270,6 +270,45 @@ button{font-family:inherit;}
   background:rgba(255,255,255,.85); border:1px solid var(--line); cursor:pointer; font-size:14px; color:var(--ink);}
 .bio-close:hover{border-color:var(--pink); color:var(--pink);}
 @media (max-width:720px){ .bio-panel{grid-template-columns:1fr; grid-template-rows:38% 62%; height:min(86vh,720px);} }
+
+/* ===== MERCH card badges (sold out / low stock) ===== */
+.bc-sold .bc-img{filter:grayscale(1) brightness(.7);}
+.bc-soldout{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none;}
+.bc-soldout span{background:rgba(12,14,20,.82); color:#fff; font-weight:800; letter-spacing:.18em; font-size:13px; padding:8px 16px; border-radius:999px; border:1px solid rgba(255,255,255,.25);}
+.bc-low{position:absolute; bottom:12px; left:12px; background:linear-gradient(90deg,#ff7a2d,#ff2d8b); color:#fff; font-weight:800; font-size:10px; letter-spacing:.1em; padding:5px 10px; border-radius:999px;}
+
+/* ===== MERCH popup ===== */
+.merch-ov{position:fixed; inset:0; z-index:80; background:rgba(8,8,14,.55); backdrop-filter:blur(8px);
+  display:flex; align-items:center; justify-content:center; padding:20px; animation:fadein .25s ease;}
+.merch-panel{position:relative; display:grid; grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);
+  width:min(920px,94vw); max-height:88vh; background:#fff; border-radius:20px; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,.4);}
+.merch-close{position:absolute; top:14px; right:14px; z-index:4; width:38px; height:38px; border-radius:50%;
+  background:#fff; border:1px solid var(--line); color:var(--ink); font-size:14px; cursor:pointer; transition:.2s;}
+.merch-close:hover{border-color:var(--pink); color:var(--pink);}
+.merch-gallery{background:#f4f4f7; display:flex; flex-direction:column; min-height:0;}
+.merch-main{position:relative; flex:1; min-height:0; display:flex; align-items:center; justify-content:center; padding:18px;}
+.merch-main img{max-width:100%; max-height:100%; object-fit:contain; border-radius:12px;}
+.merch-soldout{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;}
+.merch-soldout span{background:rgba(12,14,20,.82); color:#fff; font-weight:800; letter-spacing:.18em; padding:10px 20px; border-radius:999px;}
+.merch-thumbs{display:flex; gap:8px; padding:12px 18px 18px; overflow-x:auto;}
+.merch-thumb{flex:0 0 auto; width:54px; height:54px; border-radius:10px; overflow:hidden; border:2px solid transparent; background:#fff; cursor:pointer; padding:0;}
+.merch-thumb.on{border-color:var(--pink);}
+.merch-thumb img{width:100%; height:100%; object-fit:cover;}
+.merch-info{padding:34px 30px; overflow-y:auto; display:flex; flex-direction:column;}
+.merch-cat{font-family:var(--mono); font-size:11px; letter-spacing:.18em; color:var(--pink); text-transform:uppercase; font-weight:700;}
+.merch-info h2{font-size:26px; margin:10px 0 6px; line-height:1.15;}
+.merch-price{font-size:22px; font-weight:800; color:var(--ink);}
+.merch-usd{font-size:12px; color:var(--dim); font-weight:600;}
+.merch-lowbanner{margin-top:12px; background:linear-gradient(90deg,#ff7a2d,#ff2d8b); color:#fff; font-weight:800; font-size:11px; letter-spacing:.08em; padding:8px 12px; border-radius:10px;}
+.merch-blurb{color:var(--dim); line-height:1.6; font-size:14px; margin:16px 0;}
+.merch-variants{font-family:var(--mono); font-size:12px; color:var(--ink); margin:4px 0 10px;}
+.merch-buy{display:inline-block; text-align:center; text-decoration:none; margin-top:auto; font-family:var(--mono);
+  font-size:13px; letter-spacing:.12em; font-weight:800; color:#fff; background:linear-gradient(90deg,var(--pink),var(--blue));
+  padding:15px; border-radius:999px; border:0; cursor:pointer; transition:.2s;}
+.merch-buy:hover{transform:translateY(-1px); box-shadow:0 8px 20px rgba(255,45,139,.3);}
+.merch-buy:disabled{background:#c9c9d2; cursor:not-allowed; transform:none; box-shadow:none;}
+.merch-note{font-size:11px; color:var(--dim); text-align:center; margin-top:12px; line-height:1.5;}
+@media (max-width:720px){ .merch-panel{grid-template-columns:1fr; grid-template-rows:auto auto; max-height:90vh;} .merch-main{height:44vh;} }
 @keyframes fade{from{opacity:0}to{opacity:1}}
 
 /* album row */

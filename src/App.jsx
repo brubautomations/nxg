@@ -613,6 +613,59 @@ function MemberCard({ m, onOpen, copy }) {
   );
 }
 
+function MerchView({ item, onClose, copy, doorman }) {
+  useScrollLock(!!item);
+  const [imgIdx, setImgIdx] = useState(0);
+  useEffect(() => { setImgIdx(0); }, [item]);
+  if (!item) return null;
+  const images = Array.isArray(item.images) ? item.images : [];
+  const inv = item.inventory;
+  const tracks = !(String(item.type).toLowerCase() === 'digital' && (inv === null || inv === undefined || inv === ''));
+  const soldOut = tracks && Number(inv) <= 0;
+  const low = tracks && !soldOut && Number(inv) <= (Number(item.low_stock_threshold) || 2);
+  const buyUrl = doorman ? `${doorman}?route=merchbuy&item=${item.id}` : '#';
+  return (
+    <div className="merch-ov" onClick={onClose}>
+      <div className="merch-panel" onClick={(e) => e.stopPropagation()} data-lenis-prevent>
+        <button className="merch-close" onClick={onClose} aria-label="Close">✕</button>
+        <div className="merch-gallery">
+          <div className="merch-main">
+            {images[imgIdx] && <img src={images[imgIdx]} alt={item.name} draggable="false" />}
+            {soldOut && <div className="merch-soldout"><span>SOLD OUT</span></div>}
+          </div>
+          {images.length > 1 && (
+            <div className="merch-thumbs">
+              {images.map((u, i) => (
+                <button key={i} className={'merch-thumb' + (i === imgIdx ? ' on' : '')} onClick={() => setImgIdx(i)}>
+                  <img src={u} alt="" draggable="false" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="merch-info">
+          <span className="merch-cat">{item.category || copyVal(copy, 'merch_eyebrow', 'NXG // SHOP')}</span>
+          <h2>{item.name}</h2>
+          {item.price != null && <div className="merch-price">${item.price} <span className="merch-usd">USD</span></div>}
+          {low && <div className="merch-lowbanner">{copyVal(copy, 'merch_low', 'CLOSE TO SELLING OUT —')} {Number(inv)} {copyVal(copy, 'merch_left', 'LEFT')}</div>}
+          {item.blurb && <p className="merch-blurb">{item.blurb}</p>}
+          {item.variants && String(item.variants).trim() !== '' && (
+            <p className="merch-variants">{copyVal(copy, 'merch_options', 'Options')}: {item.variants}</p>
+          )}
+          {soldOut ? (
+            <button className="merch-buy" disabled>{copyVal(copy, 'merch_soldout', 'SOLD OUT')}</button>
+          ) : (
+            <a className="merch-buy" href={buyUrl} target="_blank" rel="noopener noreferrer">
+              {copyVal(copy, 'merch_buy', 'BUY NOW')} →
+            </a>
+          )}
+          <p className="merch-note">{copyVal(copy, 'merch_secure', 'Secure checkout. Physical items ship in 7–14 days.')}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MemberBio({ m, onClose, copy }) {
   useScrollLock(!!m);
   if (!m) return null;
@@ -1072,6 +1125,7 @@ export default function App() {
   const [bioMember, setBioMember] = useState(null);
   const [openAlbum, setOpenAlbum] = useState(null);
   const [photo, setPhoto] = useState(null);
+  const [openMerch, setOpenMerch] = useState(null);
   const [bgPool, setBgPool] = useState([]);
   const [bgUrl, setBgUrl] = useState('');
   const [isMobileView, setIsMobileView] = useState(
@@ -1305,17 +1359,27 @@ export default function App() {
             <h2>{copyVal(copy, 'head_merch', 'MERCH')}</h2>
             {merch.length ? (
               <Belt
-                items={merch} size="lg" resetKey={merch.length} onTap={() => {}}
-                renderCard={(m) => (
-                  <>
-                    <div className="bc-frame">
-                      <img className="bc-img" src={att(m.image) || att(m.photo) || att(m.cover)} alt={m.name || m.title} draggable="false" />
-                      {m.price != null && <span className="bc-price">${m.price}</span>}
-                    </div>
-                    <span className="bc-cap">{m.name || m.title}</span>
-                    <button className="bc-btn ghost" disabled>{copyVal(copy, 'merch_btn', 'STORE OPENS SOON')}</button>
-                  </>
-                )}
+                items={merch} size="lg" resetKey={merch.length}
+                onTap={(m, i, api) => { if (!api.wasDrag()) setOpenMerch(m); }}
+                renderCard={(m) => {
+                  const img = (Array.isArray(m.images) && m.images[0]) || '';
+                  const inv = m.inventory;
+                  const tracks = !(String(m.type).toLowerCase() === 'digital' && (inv === null || inv === undefined || inv === ''));
+                  const soldOut = tracks && Number(inv) <= 0;
+                  const low = tracks && !soldOut && Number(inv) <= (Number(m.low_stock_threshold) || 2);
+                  return (
+                    <>
+                      <div className={'bc-frame' + (soldOut ? ' bc-sold' : '')}>
+                        {img && <img className="bc-img" src={img} alt={m.name} draggable="false" />}
+                        {m.price != null && <span className="bc-price">${m.price}</span>}
+                        {soldOut && <div className="bc-soldout"><span>SOLD OUT</span></div>}
+                        {low && <span className="bc-low">{Number(inv)} LEFT</span>}
+                      </div>
+                      <span className="bc-cap">{m.name}</span>
+                      <button className="bc-btn ghost">{soldOut ? copyVal(copy, 'merch_soldout', 'SOLD OUT') : copyVal(copy, 'merch_view', 'VIEW →')}</button>
+                    </>
+                  );
+                }}
               />
             ) : <p className="media-empty">{copyVal(copy, 'merch_empty', 'Store opening soon.')}</p>}
           </section>
@@ -1421,6 +1485,7 @@ export default function App() {
       <SpotifyPlayer tracks={pub(data && data.tracks)} show={entered} logo={logo} nowLabel={copyVal(copy, 'player_now', 'NOW PLAYING')} />
       <MemberBio m={bioMember} onClose={() => setBioMember(null)} copy={copy} />
       <AlbumView album={openAlbum} tracks={tracks} onClose={() => setOpenAlbum(null)} copy={copy} />
+      <MerchView item={openMerch} onClose={() => setOpenMerch(null)} copy={copy} doorman={DOORMAN_URL} />
       {photo && (
         <div className="photo-ov" onClick={() => setPhoto(null)}>
           <button className="photo-x" onClick={() => setPhoto(null)} aria-label="Close">✕</button>
