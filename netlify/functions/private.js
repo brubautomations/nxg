@@ -42,6 +42,7 @@ function safeMerch(fields) {
     category: fields.category || '',
     order: fields.order ?? 0,
     images,                                          // product photos — public, shown clearly
+    file_count: Array.isArray(fields.digital_file) ? fields.digital_file.length : 0, // how many files buyer gets — a number only, not the files
     // NOTE: `digital_file` is intentionally dropped. Do not add it.
   };
 }

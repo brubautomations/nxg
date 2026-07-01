@@ -647,6 +647,9 @@ function MerchView({ item, onClose, copy, doorman }) {
           <span className="merch-cat">{item.category || copyVal(copy, 'merch_eyebrow', 'NXG // SHOP')}</span>
           <h2>{item.name}</h2>
           {item.price != null && <div className="merch-price">${item.price} <span className="merch-usd">USD</span></div>}
+          {String(item.type).toLowerCase() === 'digital' && item.file_count > 0 && (
+            <div className="merch-files">{item.file_count} {copyVal(copy, 'merch_files', 'files included')}</div>
+          )}
           {low && <div className="merch-lowbanner">{copyVal(copy, 'merch_low', 'CLOSE TO SELLING OUT —')} {Number(inv)} {copyVal(copy, 'merch_left', 'LEFT')}</div>}
           {item.blurb && <p className="merch-blurb">{item.blurb}</p>}
           {item.variants && String(item.variants).trim() !== '' && (
@@ -1367,6 +1370,7 @@ export default function App() {
                   const tracks = !(String(m.type).toLowerCase() === 'digital' && (inv === null || inv === undefined || inv === ''));
                   const soldOut = tracks && Number(inv) <= 0;
                   const low = tracks && !soldOut && Number(inv) <= (Number(m.low_stock_threshold) || 2);
+                  const isDigital = String(m.type).toLowerCase() === 'digital';
                   return (
                     <>
                       <div className={'bc-frame' + (soldOut ? ' bc-sold' : '')}>
@@ -1374,6 +1378,7 @@ export default function App() {
                         {m.price != null && <span className="bc-price">${m.price}</span>}
                         {soldOut && <div className="bc-soldout"><span>SOLD OUT</span></div>}
                         {low && <span className="bc-low">{Number(inv)} LEFT</span>}
+                        {isDigital && m.file_count > 0 && <span className="bc-files">{m.file_count} FILES</span>}
                       </div>
                       <span className="bc-cap">{m.name}</span>
                       <button className="bc-btn ghost">{soldOut ? copyVal(copy, 'merch_soldout', 'SOLD OUT') : copyVal(copy, 'merch_view', 'VIEW →')}</button>
