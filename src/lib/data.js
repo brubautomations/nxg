@@ -28,6 +28,21 @@ export function usePrivate() {
   return packs;
 }
 
+// Fetch the merch storefront (same private base/endpoint; images public but the
+// digital deliverable is never exposed). Returns the merch array.
+export function useMerch() {
+  const [merch, setMerch] = useState([]);
+  useEffect(() => {
+    let on = true;
+    fetch('/.netlify/functions/private')
+      .then((r) => r.json())
+      .then((d) => { if (on) setMerch((d && d.merch) || []); })
+      .catch(() => { if (on) setMerch([]); });
+    return () => { on = false; };
+  }, []);
+  return merch;
+}
+
 // only show rows with published checked, sorted by `order`
 export const pub = (arr) =>
   (arr || []).filter((r) => r.published).sort((a, b) => (a.order || 0) - (b.order || 0));

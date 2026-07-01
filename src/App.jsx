@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useData, usePrivate, pub, copyVal, att, atts, attRaw, setLang } from './lib/data.js';
+import { useData, usePrivate, useMerch, pub, copyVal, att, atts, attRaw, setLang } from './lib/data.js';
 import { initSmoothScroll } from './lib/smoothScroll.js';
 import { setupReveals } from './lib/reveals.js';
 import { gsap } from 'gsap';
@@ -1159,7 +1159,7 @@ export default function App() {
   const media = pub(data && data.media);
   const packs = usePrivate();
   const partners = pub(data && data.partners);
-  const merch = pub(data && data.merch);
+  const merch = useMerch();
   let socials = pub(data && data.socials);
   if (!socials.length) socials = [
     { platform: 'Spotify', url: '#' }, { platform: 'YouTube', url: '#' },
