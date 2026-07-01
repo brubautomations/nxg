@@ -1360,7 +1360,7 @@ export default function App() {
             {merch.length ? (
               <Belt
                 items={merch} size="lg" resetKey={merch.length}
-                onTap={(m, i, api) => { if (!api.wasDrag()) setOpenMerch(m); }}
+                onTap={(m) => setOpenMerch(m)}
                 renderCard={(m) => {
                   const img = (Array.isArray(m.images) && m.images[0]) || '';
                   const inv = m.inventory;
