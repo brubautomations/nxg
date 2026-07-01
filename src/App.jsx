@@ -327,7 +327,11 @@ function TalkToNXG({ lang, data, members }) {
     clearTimeout(ringTimer.current);
     clearTimeout(answerTimer.current);   // cancel any pending answer
     stopRing();
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current.muted = false; }
+    if (audioRef.current) {
+      if (audioRef.current._nxgCleanup) audioRef.current._nxgCleanup();
+      audioRef.current.pause();
+      audioRef.current.muted = false;
+    }
     setPlaying(false);
     setStage('idle');
     setOpen(false);
@@ -343,23 +347,55 @@ function TalkToNXG({ lang, data, members }) {
     setLastClip((m) => ({ ...m, [qkey]: url }));
     const a = audioRef.current;
     if (!a) return;
-    // Simple + reliable: stop anything playing, load the new clip, and after the
-    // ~0.8s "beat" play it from the start. No muted-prime/promise juggling — that
-    // introduced a race where some clips silently never played. Autoplay isn't
-    // blocked here (the call already started from a user tap), so this is safe.
+
+    // The old approach played on a blind 800ms timer. If the clip hadn't buffered
+    // yet, play() silently did nothing (~50% failures, random by network speed).
+    // Fix: wait for BOTH (a) the ~0.8s realistic beat AND (b) the audio actually
+    // being ready to play. Only then start. No race, no silent no-ops.
     clearTimeout(answerTimer.current);
+    if (a._nxgCleanup) { a._nxgCleanup(); }      // tear down any previous listeners
     try { a.pause(); } catch (e) {}
     a.muted = false;
+    a.currentTime = 0;
     a.src = url;
-    a.load();                          // explicitly (re)load the new source
+    a.load();
     setPlaying(true);
-    answerTimer.current = setTimeout(() => {
+
+    let beatDone = false;
+    let ready = a.readyState >= 3;               // HAVE_FUTURE_DATA or better
+    let started = false;
+
+    const start = () => {
+      if (started || !beatDone || !ready) return;
+      started = true;
+      cleanup();
       try {
         a.currentTime = 0;
         const p = a.play();
         if (p && typeof p.catch === 'function') p.catch(() => setPlaying(false));
       } catch (e) { setPlaying(false); }
-    }, 800);
+    };
+
+    const onCanPlay = () => { ready = true; start(); };
+    const onError = () => { cleanup(); setPlaying(false); };
+    const cleanup = () => {
+      a.removeEventListener('canplay', onCanPlay);
+      a.removeEventListener('canplaythrough', onCanPlay);
+      a.removeEventListener('error', onError);
+      a._nxgCleanup = null;
+    };
+    a._nxgCleanup = cleanup;
+
+    a.addEventListener('canplay', onCanPlay);
+    a.addEventListener('canplaythrough', onCanPlay);
+    a.addEventListener('error', onError);
+
+    // the realistic beat: after ~0.8s, mark the beat done and try to start
+    answerTimer.current = setTimeout(() => { beatDone = true; start(); }, 800);
+
+    // safety net: if something stalls and we never get "ready" within 6s,
+    // force a play attempt anyway so it's never permanently stuck silent.
+    setTimeout(() => { if (!started) { ready = true; beatDone = true; start(); } }, 6000);
   }
 
   function askQuestion(q) {
