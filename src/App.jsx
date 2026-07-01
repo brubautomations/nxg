@@ -1038,6 +1038,15 @@ export default function App() {
   const [photo, setPhoto] = useState(null);
   const [bgPool, setBgPool] = useState([]);
   const [bgUrl, setBgUrl] = useState('');
+  const [isMobileView, setIsMobileView] = useState(
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const onChange = (e) => setIsMobileView(e.matches);
+    mq.addEventListener ? mq.addEventListener('change', onChange) : mq.addListener(onChange);
+    return () => { mq.removeEventListener ? mq.removeEventListener('change', onChange) : mq.removeListener(onChange); };
+  }, []);
 
   const lastRef = useRef(null);
   const chibiRef = useRef(null), innerRef = useRef(null), pctRef = useRef(null),
@@ -1323,7 +1332,7 @@ export default function App() {
 
       {/* ===== MENU ===== */}
       <nav className={'menu' + (menuOpen ? ' open' : '')} aria-hidden={!menuOpen}>
-        <div className="menu-bg" style={{ backgroundImage: `url(/assets/menu/${activeLang.toLowerCase()}.png)` }} aria-hidden="true" />
+        <div className="menu-bg" style={{ backgroundImage: `url(/assets/menu/${activeLang.toLowerCase()}${isMobileView ? '-mobile' : ''}.png)` }} aria-hidden="true" />
         <div className="menu-top"><span className="tn-mark">NXG</span><button className="menu-x" aria-label="Close menu" onClick={() => setMenuOpen(false)}>✕</button></div>
         <ul className="menu-links">
           {[['home', 'nav_home', 'HOME'], ['members', 'nav_members', 'MEMBERS'], ['discography', 'nav_discography', 'DISCOGRAPHY'], ['media', 'nav_media', 'MEDIA'], ['merch', 'nav_merch', 'MERCH'], ['partners', 'nav_partners', 'PARTNERS'], ['about', 'nav_about', 'ABOUT']].map(([id, k, label]) => (
