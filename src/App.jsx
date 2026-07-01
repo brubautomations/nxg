@@ -341,16 +341,14 @@ function TalkToNXG({ lang, data, members }) {
 
   function playRandom(pool, qkey) {
     const usable = pool.map((r) => att(r.audio)).filter(Boolean);
-    console.log('[NXG] askQuestion', qkey, '| answer rows found:', pool.length, '| usable audio urls:', usable.length);
-    if (!usable.length) { console.warn('[NXG] NO usable audio for', qkey, '— pool:', pool); return; }
+    if (!usable.length) return;
     // avoid repeating the last clip for this question
     let choices = usable;
     if (usable.length > 1 && lastClip[qkey]) choices = usable.filter((u) => u !== lastClip[qkey]);
     const url = choices[Math.floor(Math.random() * choices.length)];
-    console.log('[NXG] chosen url:', url);
     setLastClip((m) => ({ ...m, [qkey]: url }));
     const a = audioRef.current;
-    if (!a) { console.warn('[NXG] no audio element'); return; }
+    if (!a) return;
 
     clearTimeout(answerTimer.current);
     if (a._nxgCleanup) { a._nxgCleanup(); }
@@ -360,31 +358,24 @@ function TalkToNXG({ lang, data, members }) {
     a.src = url;
     a.load();
     setPlaying(true);
-    console.log('[NXG] src set + load() called. readyState now:', a.readyState);
 
     let beatDone = false;
     let ready = a.readyState >= 3;
     let started = false;
 
-    const start = (via) => {
-      console.log('[NXG] start() via', via, '| beatDone:', beatDone, '| ready:', ready, '| started:', started, '| readyState:', a.readyState);
+    const start = () => {
       if (started || !beatDone || !ready) return;
       started = true;
       cleanup();
       try {
         a.currentTime = 0;
         const p = a.play();
-        if (p && typeof p.then === 'function') {
-          p.then(() => console.log('[NXG] ✅ play() RESOLVED — audio should be audible'))
-           .catch((err) => { console.error('[NXG] ❌ play() REJECTED:', err && err.name, err && err.message); setPlaying(false); });
-        } else {
-          console.log('[NXG] play() returned no promise (old browser)');
-        }
-      } catch (e) { console.error('[NXG] ❌ play() threw:', e); setPlaying(false); }
+        if (p && typeof p.catch === 'function') p.catch(() => setPlaying(false));
+      } catch (e) { setPlaying(false); }
     };
 
-    const onCanPlay = () => { ready = true; start('canplay'); };
-    const onError = () => { console.error('[NXG] ❌ audio error event. code:', a.error && a.error.code); cleanup(); setPlaying(false); };
+    const onCanPlay = () => { ready = true; start(); };
+    const onError = () => { cleanup(); setPlaying(false); };
     const cleanup = () => {
       a.removeEventListener('canplay', onCanPlay);
       a.removeEventListener('canplaythrough', onCanPlay);
@@ -397,8 +388,8 @@ function TalkToNXG({ lang, data, members }) {
     a.addEventListener('canplaythrough', onCanPlay);
     a.addEventListener('error', onError);
 
-    answerTimer.current = setTimeout(() => { beatDone = true; start('beat-timer'); }, 800);
-    setTimeout(() => { if (!started) { console.warn('[NXG] ⚠️ 6s safety net firing — forcing play'); ready = true; beatDone = true; start('safety-net'); } }, 6000);
+    answerTimer.current = setTimeout(() => { beatDone = true; start(); }, 800);
+    setTimeout(() => { if (!started) { ready = true; beatDone = true; start(); } }, 6000);
   }
 
   function askQuestion(q) {
@@ -411,7 +402,6 @@ function TalkToNXG({ lang, data, members }) {
     const pool = answers.filter((a) =>
       a.published && norm(a.question_key) === qk && norm(a.member) === mem
     );
-    console.log('[NXG] match', q.key, '-> rows:', pool.length, '| member:', memberName);
     // lock immediately so it can't be double-tapped during the beat
     const next = { day: todayKey(), used: [...locks.used, q.key] };
     setLocks(next); writeLocks(next);
